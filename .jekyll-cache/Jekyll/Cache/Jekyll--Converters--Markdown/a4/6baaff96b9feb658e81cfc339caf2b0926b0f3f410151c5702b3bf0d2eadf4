@@ -1,0 +1,138 @@
+I"6<h1 id="the-hacker-one">the hacker one</h1>
+
+<p>This challenge was one of the weirdest challenges, I have ever done
+so let’s begin:</p>
+
+<p>we have the challenge url: https://umbc.h1ctf.com/
+I started by a dirsearch 
+and found the following endpoints 
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/dirS1.png" alt="dirsearch" /></p>
+
+<p>from here I started to look at the endpoints</p>
+
+<p><code class="highlighter-rouge">/login</code>
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/login-1.png" alt="login-1" /></p>
+
+<p><code class="highlighter-rouge">/register</code>
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/register-1.png" alt="register" /></p>
+
+<p><code class="highlighter-rouge">/profile</code>
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png" alt="profile" /></p>
+
+<p><code class="highlighter-rouge">/debug</code>
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png" alt="debug" /></p>
+
+<p><code class="highlighter-rouge">/profile and /debug</code> caught my eye, so I started crafting a jwt token to see the contents 
+and after a lot of trial and error and pain it worked</p>
+
+<p><code class="highlighter-rouge">eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc</code></p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/chromeDev-1.png" alt="profile-2" />
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-2.png" alt="profile-2" />
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/debug-2.png" alt="debug-2" /></p>
+
+<p><strong>at this point I thought that’s it, that’s the whole thing isn’t it ?</strong>
+<strong>and it turns out no that was nothing :(</strong></p>
+
+<p>after sometime I got frustrated and needed some help so I talked to my teammate https://twitter.com/ianonhulk
+and we kept on trying and trying for hours and nothing helped</p>
+
+<p>so we just started from the beginning and backtracked our tracks :)
+I was just taking a look again at /profile and I was like <code class="highlighter-rouge">hmmmmm is that a f***ing VHOST</code></p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-2.png" alt="vhost" /></p>
+
+<p>I added all the weird domains to my <code class="highlighter-rouge">/etc/hosts</code> and started playing around 
+and it didn’t work like WTF, so I tried with the vhost from <code class="highlighter-rouge">/debug</code> and it worked :P</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-3.png" alt="vhost" />
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/api-1.png" alt="api" />
+after this amazing discovery I started fuzzing the api
+and I got some other endpoints</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiFuzz-1.png" alt="disearch-api" /></p>
+
+<p>now only <code class="highlighter-rouge">/reports</code> caught my eye but it’s forbiden <strong>hmmmmmmmmmm</strong>:</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-1.png" alt="api-reports" /></p>
+
+<p>I also guessed <code class="highlighter-rouge">/reporters</code> because you know it makes sense, it’s also forbiden :(</p>
+
+<p>after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the <code class="highlighter-rouge">api-key</code> header</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-2.png" alt="reports" />
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/reporters.png" alt="reporters" /></p>
+
+<p><strong>so are we done yet ?</strong>
+<strong>NO</strong></p>
+
+<p>it turns out the api is useless nothing unique</p>
+
+<p>we kept on banging our heads until I read the hints about different castles and docs ..etc
+so this challenge is inspired by hackerone and stuff so the api docs should be like this https://api.hackerone.com/v1/api-docs/v1/swagger.json</p>
+
+<p>after a couple of hours of pain and a lot of hard metal music we found out the right vhost and path
+http://swagger.rbtrust.internal/swagger.json
+I just started screaming because it was the only thing I wanted for hours</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiDocs-1.png" alt="docs" /></p>
+
+<p>so from the docs we found out that there’s a hidden param in the api for /debug
+http://api.rbtrust.internal/debug?url_48902=file:///etc/passwd</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/etcpasswd-1.png" alt="etc/passwd" />
+we can see <code class="highlighter-rouge">/home/jobert</code> so the flag should be <code class="highlighter-rouge">/home/jobert/flag.txt</code></p>
+
+<p><strong>YES YES, STILL ARE WE F***CKING DONE YET</strong>
+<strong>NO, there’s still alot of pain and sacrifice</strong></p>
+
+<p>at this point there was still 30 minutes for the CTF and I need the flag</p>
+
+<p>so the hints have something to do with <code class="highlighter-rouge">$CLOUD_SERVER</code> or whatever
+from the /debug we can clearly see it’s an aws, so we started playing around with aws stuff
+the only useful thing we found was this http://api.rbtrust.internal/debug?url_48902=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/awsSecrets-1.png" alt="dirsearch" />
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/nahamsec-id.png" alt="nahamsec" /></p>
+
+<p><strong>STILL WHERE’S THE FLAG GUYS</strong></p>
+
+<p>there was no flag or anything important so we got a good idea about s3 buckets
+anddddd the keys for the s3 was wrong :(</p>
+
+<p>15 mins left and still nothing WTF, my teammate was like <code class="highlighter-rouge">I need the f***ing flag</code></p>
+
+<p>so after reading some writeups and stuff we discovered that the aws keys are in <code class="highlighter-rouge">/home/jobert/.aws/credentials</code>
+and it worked :P</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/jobert.png" alt="creds" /></p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/awsStss-1.png" alt="ssts" /></p>
+
+<p><strong>ARE WE DONE YET SRSLY GUYS</strong></p>
+
+<p>still no, we had another thing, at that time we didn’t know about the tool to bruteForce for the right bucket
+so we had to guess, we had 6 mins left for the CTF my hands were shaking and I didn’t know how to type.</p>
+
+<p>and it was rbtrust-internal</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/S3-flag.png" alt="flag" /></p>
+
+<p><strong>YES YES, but wait a minute how can I read the flag hmmmmmmmm?</strong></p>
+
+<p>I didn’t know what to do, so I had to break it whatever it costs
+after some trial and error I got it</p>
+
+<p><code class="highlighter-rouge">aws s3 cp s3://rbtrust-internal/flag.txt ./1 </code>
+and done it took us 10 hours to finish it</p>
+
+<p><img src="https://pbs.twimg.com/media/Dpoi1z-VsAEQkYA?format=jpg&amp;name=small" alt="meme" />
+submitted 2 mins before the ctf ends :D</p>
+
+<p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/Final-flag.png" alt="flag" /></p>
+
+<p><code class="highlighter-rouge">flag{get_em_uPy4TWP1SQlcaukrU8GPe}</code></p>
+
+<p>only 2 solves :)
+<img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/ww.png" alt="2 solves" /></p>
+:ET

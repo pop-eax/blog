@@ -1,0 +1,41 @@
+title: Blog
+markdown: kramdown
+url: ""
+baseurl: "/blog"
+
+# for atom feed
+author:
+  name: pop_eax
+  email: pop_eax@localhost.com
+
+plugins:
+  - jekyll-paginate
+  - jemoji
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+  - jekyll-compose
+
+paginate_path: "/page:num/"
+
+paginate: 5
+
+collections_dir: all_collections
+collections:
+  posts:
+    output: true
+  projects:
+    output: true
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: "post"
+  - scope:
+      path: "_posts"
+    values:
+      layout: "post"
+      permalink: /posts/:categories/:year/:month/:day/:title/
+
+exclude: ["sitemap.xml", "feed.xml", "LICENSE", "README.md"]

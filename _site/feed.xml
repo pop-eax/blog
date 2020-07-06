@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/blog/" rel="alternate" type="text/html" /><updated>2020-07-06T21:05:36+03:00</updated><id>http://localhost:4000/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">The Hacker One writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/" rel="alternate" type="text/html" title="The Hacker One writeup" /><published>2020-07-06T20:40:00+03:00</published><updated>2020-07-06T20:40:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/">&lt;h1 id=&quot;the-hacker-one&quot;&gt;the hacker one&lt;/h1&gt;
+
+&lt;p&gt;This challenge was one of the weirdest challenges, I have ever done
+so let’s begin:&lt;/p&gt;
+
+&lt;p&gt;we have the challenge url: https://umbc.h1ctf.com/
+I started by a dirsearch 
+and found the following endpoints 
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/dirS1.png&quot; alt=&quot;dirsearch&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;from here I started to look at the endpoints&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/login&lt;/code&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/login-1.png&quot; alt=&quot;login-1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/register&lt;/code&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/register-1.png&quot; alt=&quot;register&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/profile&lt;/code&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png&quot; alt=&quot;profile&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/debug&lt;/code&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png&quot; alt=&quot;debug&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/profile and /debug&lt;/code&gt; caught my eye, so I started crafting a jwt token to see the contents 
+and after a lot of trial and error and pain it worked&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/chromeDev-1.png&quot; alt=&quot;profile-2&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-2.png&quot; alt=&quot;profile-2&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/debug-2.png&quot; alt=&quot;debug-2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;at this point I thought that’s it, that’s the whole thing isn’t it ?&lt;/strong&gt;
+&lt;strong&gt;and it turns out no that was nothing :(&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;after sometime I got frustrated and needed some help so I talked to my teammate https://twitter.com/ianonhulk
+and we kept on trying and trying for hours and nothing helped&lt;/p&gt;
+
+&lt;p&gt;so we just started from the beginning and backtracked our tracks :)
+I was just taking a look again at /profile and I was like &lt;code class=&quot;highlighter-rouge&quot;&gt;hmmmmm is that a f***ing VHOST&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-2.png&quot; alt=&quot;vhost&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I added all the weird domains to my &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/hosts&lt;/code&gt; and started playing around 
+and it didn’t work like WTF, so I tried with the vhost from &lt;code class=&quot;highlighter-rouge&quot;&gt;/debug&lt;/code&gt; and it worked :P&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-3.png&quot; alt=&quot;vhost&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/api-1.png&quot; alt=&quot;api&quot; /&gt;
+after this amazing discovery I started fuzzing the api
+and I got some other endpoints&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiFuzz-1.png&quot; alt=&quot;disearch-api&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now only &lt;code class=&quot;highlighter-rouge&quot;&gt;/reports&lt;/code&gt; caught my eye but it’s forbiden &lt;strong&gt;hmmmmmmmmmm&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-1.png&quot; alt=&quot;api-reports&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I also guessed &lt;code class=&quot;highlighter-rouge&quot;&gt;/reporters&lt;/code&gt; because you know it makes sense, it’s also forbiden :(&lt;/p&gt;
+
+&lt;p&gt;after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the &lt;code class=&quot;highlighter-rouge&quot;&gt;api-key&lt;/code&gt; header&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-2.png&quot; alt=&quot;reports&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/reporters.png&quot; alt=&quot;reporters&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;so are we done yet ?&lt;/strong&gt;
+&lt;strong&gt;NO&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;it turns out the api is useless nothing unique&lt;/p&gt;
+
+&lt;p&gt;we kept on banging our heads until I read the hints about different castles and docs ..etc
+so this challenge is inspired by hackerone and stuff so the api docs should be like this https://api.hackerone.com/v1/api-docs/v1/swagger.json&lt;/p&gt;
+
+&lt;p&gt;after a couple of hours of pain and a lot of hard metal music we found out the right vhost and path
+http://swagger.rbtrust.internal/swagger.json
+I just started screaming because it was the only thing I wanted for hours&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiDocs-1.png&quot; alt=&quot;docs&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;so from the docs we found out that there’s a hidden param in the api for /debug
+http://api.rbtrust.internal/debug?url_48902=file:///etc/passwd&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/etcpasswd-1.png&quot; alt=&quot;etc/passwd&quot; /&gt;
+we can see &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert&lt;/code&gt; so the flag should be &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert/flag.txt&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;YES YES, STILL ARE WE F***CKING DONE YET&lt;/strong&gt;
+&lt;strong&gt;NO, there’s still alot of pain and sacrifice&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;at this point there was still 30 minutes for the CTF and I need the flag&lt;/p&gt;
+
+&lt;p&gt;so the hints have something to do with &lt;code class=&quot;highlighter-rouge&quot;&gt;$CLOUD_SERVER&lt;/code&gt; or whatever
+from the /debug we can clearly see it’s an aws, so we started playing around with aws stuff
+the only useful thing we found was this http://api.rbtrust.internal/debug?url_48902=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/awsSecrets-1.png&quot; alt=&quot;dirsearch&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/nahamsec-id.png&quot; alt=&quot;nahamsec&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;STILL WHERE’S THE FLAG GUYS&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;there was no flag or anything important so we got a good idea about s3 buckets
+anddddd the keys for the s3 was wrong :(&lt;/p&gt;
+
+&lt;p&gt;15 mins left and still nothing WTF, my teammate was like &lt;code class=&quot;highlighter-rouge&quot;&gt;I need the f***ing flag&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;so after reading some writeups and stuff we discovered that the aws keys are in &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert/.aws/credentials&lt;/code&gt;
+and it worked :P&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/jobert.png&quot; alt=&quot;creds&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/awsStss-1.png&quot; alt=&quot;ssts&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;ARE WE DONE YET SRSLY GUYS&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;still no, we had another thing, at that time we didn’t know about the tool to bruteForce for the right bucket
+so we had to guess, we had 6 mins left for the CTF my hands were shaking and I didn’t know how to type.&lt;/p&gt;
+
+&lt;p&gt;and it was rbtrust-internal&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/S3-flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;YES YES, but wait a minute how can I read the flag hmmmmmmmm?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;I didn’t know what to do, so I had to break it whatever it costs
+after some trial and error I got it&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;aws s3 cp s3://rbtrust-internal/flag.txt ./1 &lt;/code&gt;
+and done it took us 10 hours to finish it&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://pbs.twimg.com/media/Dpoi1z-VsAEQkYA?format=jpg&amp;amp;name=small&quot; alt=&quot;meme&quot; /&gt;
+submitted 2 mins before the ctf ends :D&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/Final-flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;flag{get_em_uPy4TWP1SQlcaukrU8GPe}&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;only 2 solves :)
+&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/ww.png&quot; alt=&quot;2 solves&quot; /&gt;&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">the hacker one</summary></entry></feed>

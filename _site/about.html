@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Blog | pop_eax</title>
+  <link rel="stylesheet" href="/blog/assets/css/mark.css" />
+  <link rel="stylesheet" href="/blog/assets/css/custom.css" />
+  <!-- PILL JS LOADER SYLE -->
+  <style>
+    #indicator {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 3px;
+      display: none;
+      background-color: #72b6b5;
+    }
+
+    .is-loading {
+      display: block;
+      animation: blink 1.5s linear infinite;
+    }
+
+    @keyframes blink {
+      from,
+      to {
+        background-color: #72b6b5;
+      }
+
+      50% {
+        background-color: #42b983;
+      }
+    }
+
+    #project-link {
+      display: block;
+      position: fixed;
+      padding: 8px;
+      top: 0;
+      right: 0;
+    }
+  </style>
+  <!-- PILL JS -->
+  <script src="/blog/assets/js/pill.min.js"></script>
+  <script>
+    // this is for pill js as the normal link wont work
+    function openLink(url) {
+      window.open(url, "_blank");
+    }
+  </script>
+</head>
+
+  <body>
+    <div id="indicator"></div>
+    <div id="page">
+      <style>
+        .title {
+          padding: 5%;
+          color: #101417;
+          font-size: 28px;
+          font-weight: bold;
+          text-align: center;
+          background: #f78e66;
+          display: grid;
+        }
+        .author-bio {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          font-size: 20px;
+          font-weight: bold;
+        }
+        .author-bio img {
+          width: 200px !important;
+          border-radius: 100%;
+          border: 4px solid #2ab375 !important;
+        }
+      </style>
+      <!-- header -->
+      <header>
+	<a href="/blog/">
+		<h3>Blog</h3>
+	</a>
+</header>
+
+      <!-- nav -->
+      <nav>
+	
+		
+			<a href="/blog/">Home</a>
+		
+	
+		
+			<a href="/blog/about">About</a>
+		
+	
+</nav>
+      <!-- page content -->
+      <main class="content">
+        <div class="author-bio">
+          <img src="https://pbs.twimg.com/profile_images/1185241665461768194/VbuvkIa3_200x200.jpg" alt="ww" />
+          <p>pwning stuff 24/7</p>
+        </div>
+        <p>CTF addict, codes stuff sometimes</p>
+
+<p><a href="https://twitter.com/pop_eax">Twitter</a> 
+<a href="http://github.com/pop-eax">Github</a></p>
+
+      </main>
+
+      <!-- footer -->
+      <footer>
+	<p>
+		if I ain't popping these pills, I am popping some shells.
+	</p>
+	<p>
+		&copy 2020 | Blog
+	</p>
+</footer>
+<script src='/blog/assets/js/site.js' id="pill_site_script" type='module'></script>
+    </div>
+  </body>
+</html>
