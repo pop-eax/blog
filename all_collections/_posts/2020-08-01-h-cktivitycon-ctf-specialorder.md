@@ -376,7 +376,7 @@ source code available at [github repo](https://github.com/pop-eax/SpecialOrder)
 
 ## explaining stuff about the idea of the challenge
 
-**isn't this challenge conisdered pure guessing and nothing was learned in here ?**
+**isn't this challenge considered pure guessing and nothing was learned in here ?**
 
 the `content-type` thing is popular and it happened in a couple of real life applications,
 because you never know what the devs think of the app may have used xml before or it was in there for just in case
