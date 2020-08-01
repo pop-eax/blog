@@ -30,7 +30,7 @@ also we have the ability to customize how our posts look
 <br />*interesting*
 
 ![customize-1](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-1.png)
-
+<br />
 ![customize-2](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-2.png)
 
 ~~looks ugly ngl~~
