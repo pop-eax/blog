@@ -1,102 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-  <title>Blog | thoughts on making CTFs</title>
-  <link rel="stylesheet" href="/blog/assets/css/mark.css" />
-  <link rel="stylesheet" href="/blog/assets/css/custom.css" />
-  <!-- PILL JS LOADER SYLE -->
-  <style>
-    #indicator {
-      position: fixed;
-      top: 0;
-      right: 0;
-      left: 0;
-      height: 3px;
-      display: none;
-      background-color: #72b6b5;
-    }
-
-    .is-loading {
-      display: block;
-      animation: blink 1.5s linear infinite;
-    }
-
-    @keyframes blink {
-      from,
-      to {
-        background-color: #72b6b5;
-      }
-
-      50% {
-        background-color: #42b983;
-      }
-    }
-
-    #project-link {
-      display: block;
-      position: fixed;
-      padding: 8px;
-      top: 0;
-      right: 0;
-    }
-  </style>
-  <!-- PILL JS -->
-  <script src="/blog/assets/js/pill.min.js"></script>
-  <script>
-    // this is for pill js as the normal link wont work
-    function openLink(url) {
-      window.open(url, "_blank");
-    }
-  </script>
-</head>
-
-  <body>
-    <div id="indicator"></div>
-    <div id="page">
-      <style>
-        .title {
-          padding: 10%;
-          color: #101417;
-          font-size: 18px;
-          font-weight: bold;
-          text-align: center;
-          background: #f78e66;
-          display: grid;
-        }
-        .meta {
-          font-size: 0.7rem;
-          font-weight: normal;
-          text-transform: uppercase;
-        }
-      </style>
-      <!-- header -->
-      <header>
-	<a href="/blog/">
-		<h3>Blog</h3>
-	</a>
-</header>
-
-      <!-- nav -->
-      <nav>
-	
-		
-			<a href="/blog/">Home</a>
-		
-	
-		
-			<a href="/blog/about">About</a>
-		
-	
-</nav>
-      <!-- page content -->
-      <main class="content">
-        <p class="title">
-          thoughts on making CTFs <span class="meta">Written By pop_eax</span>
-        </p>
-        <h1 id="special-order-hctivitycon-ctf-2020">Special Order h@ctivityCon CTF 2020</h1>
+I"æ~<h1 id="special-order-hctivitycon-ctf-2020">Special Order h@ctivityCon CTF 2020</h1>
 
 <p>making a big CTF challenge was always on my todo list, yes I made a couple of CTF challenges before
 but none of them actually made it to such a big event.</p>
@@ -117,7 +19,7 @@ but none of them actually made it to such a big event.</p>
 <img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-2.png" alt="post-2" /></p>
 
 <p>also we have the ability to customize how our posts look
-<br /><em>interesting</em></p>
+&lt;/br&gt;<em>interesting</em></p>
 
 <p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-1.png" alt="customize-1" /></p>
 
@@ -135,7 +37,7 @@ but none of them actually made it to such a big event.</p>
 
 <p>changing the content-type header we see that the app accepts xml</p>
 
-<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/curl.png" alt="curl" /></p>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-request.png" alt="curl" /></p>
 
 <p>so letâ€™s send an xxe payload</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="s1">'http://ip/customize'</span> <span class="se">\</span>
@@ -467,19 +369,4 @@ also it was used in multiple CTFs before which got me amazed how really few peop
 
 <p>it is a second order equation, and the bug is a second order xxe :P</p>
 
-
-      </main>
-
-      <!-- footer -->
-      <footer>
-	<p>
-		if I ain't popping these pills, I am popping some shells.
-	</p>
-	<p>
-		&copy 2020 | Blog
-	</p>
-</footer>
-<script src='/blog/assets/js/site.js' id="pill_site_script" type='module'></script>
-    </div>
-  </body>
-</html>
+:ET

