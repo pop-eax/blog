@@ -255,8 +255,8 @@ for i in k.getchildren():
 **now it's time to ship the code and deploy**
 nope it's not :P
 
-I sent a message to john that it ended and he told it would be better if I dockerized to they can deploy it easily
-so now I had another task I didn't think of
+I sent a message to john that it's done, and he told it would be better if I dockerized so they can deploy it easily
+now I had another task I didn't think of
 
 I tried to do some stuff with docker but most of them fucked up so I decided to get help from a friend who can actually
 use docker decently and plus he was working with the infra team on the CTF so I sent a message to `MEhrn00` and he sent
@@ -284,6 +284,7 @@ EXPOSE 7100
 ```
 
 and it didn't work, because lxml installation was erroring for no reason
+
 *weird error I don't understand*
 ```
  gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
