@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
-<loc>/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/</loc>
+<loc>http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/</loc>
 <lastmod>2020-07-06T20:40:00+03:00</lastmod>
 </url>
 <url>
-<loc>/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/</loc>
+<loc>http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/</loc>
 <lastmod>2020-08-01T15:04:00+03:00</lastmod>
 </url>
 <url>
-<loc>/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/</loc>
+<loc>http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/</loc>
 <lastmod>2020-08-23T16:28:00+03:00</lastmod>
 </url>
 <url>
-<loc>/blog/about.html</loc>
+<loc>http://localhost:4000/blog/about.html</loc>
 </url>
 <url>
-<loc>/blog/</loc>
+<loc>http://localhost:4000/blog/</loc>
 </url>
 </urlset>

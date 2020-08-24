@@ -179,7 +179,7 @@ and I got 2 requests :)
 ![reqs](https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/tech-support/reqs.png)
 
 at this point I tried to grab the /flag and send to my server and it didn't work.<br/>
-after researching it I realized it's not working because the XSS is triggering on another domain which is typeselfsub.web.ctfcompetition.com . <br/>
+after researching it I realized it's not working because the XSS is triggering on another domain which is typeselfsub-support.web.ctfcompetition.com . <br/>
 
 at this point I was trying to do some weird magical stuff like SOP bypasses and I thought about redirecting to the self xss at my profile somehow <br/>
 
