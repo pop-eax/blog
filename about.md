@@ -1,8 +1,8 @@
 ---
 title: pop_eax
 layout: about
-profile_pic: "https://pbs.twimg.com/profile_images/1185241665461768194/VbuvkIa3_200x200.jpg"
-profile_pic_alt: "ww"
+profile_pic: https://github.com/pop-eax/blog/raw/gh-pages/images/pfp.jpg"
+profile_pic_alt: "pfp"
 short_bio: pwning stuff 24/7
 ---
 
