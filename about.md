@@ -8,5 +8,5 @@ short_bio: pwning stuff 24/7
 
 CTF addict, codes stuff sometimes 
 
-[Twitter](https://twitter.com/pop_eax) 
+<!-- [Twitter](https://twitter.com/pop_eax) -->
 [Github](http://github.com/pop-eax)

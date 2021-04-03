@@ -67,8 +67,8 @@
             {
                 "id": "pop_eax",
                 "title": "pop_eax",
-                "content_text": "CTF addict, codes stuff sometimesTwitter Github",
-                "content_html": "<p>CTF addict, codes stuff sometimes</p><p><a href=\"https://twitter.com/pop_eax\">Twitter</a> <a href=\"http://github.com/pop-eax\">Github</a></p>",
+                "content_text": "CTF addict, codes stuff sometimesGithub",
+                "content_html": "<p>CTF addict, codes stuff sometimes</p><!-- [Twitter](https://twitter.com/pop_eax) --><p><a href=\"http://github.com/pop-eax\">Github</a></p>",
                 "url": "http://localhost:4000/blog/about.html",
                 "date_published": "",
                 "date_modified": ""
