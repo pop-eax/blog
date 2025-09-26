@@ -103,7 +103,7 @@ but none of them actually made it to such a big event.</p>
 
 <h2 id="challenge-writeup">challenge writeup</h2>
 
-<p>accessing the challenge url we get redirected to <code class="highlighter-rouge">/login</code></p>
+<p>accessing the challenge url we get redirected to <code class="language-plaintext highlighter-rouge">/login</code></p>
 
 <p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Login.png" alt="login" /></p>
 
@@ -161,7 +161,7 @@ and thought I can’t make it on time or I can’t even do it</p>
   <li>create a blog</li>
   <li>add the ability to share posts</li>
   <li>make the looks customizable</li>
-  <li>make the <code class="highlighter-rouge">/customize</code> endpoint accept json and xml</li>
+  <li>make the <code class="language-plaintext highlighter-rouge">/customize</code> endpoint accept json and xml</li>
   <li>parse the xml and make it xxe-able</li>
 </ul>
 
@@ -175,28 +175,28 @@ I had a little bit of SQLAlchemy experince before, but it needed some refresh
 I am not sure if this is the most “efficient” learning way but I like it and it works better for me.</p>
 
 <p>so I ended up with this db model</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s">"users"</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="sh">"</span><span class="s">users</span><span class="sh">"</span>
 
-    <span class="n">uuid</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">username</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">password</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
+    <span class="n">uuid</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">password</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s">"&lt;uuid </span><span class="si">%</span><span class="s">r&gt;"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">&lt;uuid %r&gt;</span><span class="sh">"</span> <span class="o">%</span> <span class="n">self</span><span class="p">.</span><span class="n">username</span>
 </code></pre></div></div>
 <p>login code</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">user</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">users_map</span><span class="p">)</span><span class="o">.</span><span class="nb">filter</span><span class="p">(</span><span class="n">or_</span><span class="p">(</span><span class="n">users_map</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-    <span class="k">if</span>  <span class="n">user</span> <span class="ow">and</span> <span class="n">check_password_hash</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">password</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">user</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">users_map</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nf">or_</span><span class="p">(</span><span class="n">users_map</span><span class="p">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">)).</span><span class="nf">first</span><span class="p">()</span>
+    <span class="k">if</span>  <span class="n">user</span> <span class="ow">and</span> <span class="nf">check_password_hash</span><span class="p">(</span><span class="n">user</span><span class="p">.</span><span class="n">password</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
         <span class="c1">#do stuff
 </span></code></pre></div></div>
 <p>signup code</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">password_hash</span> <span class="o">=</span> <span class="n">generate_password_hash</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
-<span class="n">users_table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="s">'users'</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">autoload</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">password_hash</span> <span class="o">=</span> <span class="nf">generate_password_hash</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+<span class="n">users_table</span> <span class="o">=</span> <span class="nc">Table</span><span class="p">(</span><span class="sh">'</span><span class="s">users</span><span class="sh">'</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">autoload</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">users_map</span><span class="p">)</span><span class="o">.</span><span class="nb">filter</span><span class="p">(</span><span class="n">or_</span><span class="p">(</span><span class="n">users_map</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
-        <span class="k">return</span> <span class="s">"&lt;h1&gt; duplicate username :(&lt;/h1&gt;"</span>
-    <span class="n">engine</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">users_table</span><span class="o">.</span><span class="n">insert</span><span class="p">(),</span> <span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password_hash</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">users_map</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nf">or_</span><span class="p">(</span><span class="n">users_map</span><span class="p">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">)).</span><span class="nf">first</span><span class="p">():</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">&lt;h1&gt; duplicate username :(&lt;/h1&gt;</span><span class="sh">"</span>
+    <span class="n">engine</span><span class="p">.</span><span class="nf">execute</span><span class="p">(</span><span class="n">users_table</span><span class="p">.</span><span class="nf">insert</span><span class="p">(),</span> <span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password_hash</span><span class="p">)</span>
 </code></pre></div></div>
 
 <p><del>create signin/signup functionality</del> DONE</p>
@@ -212,23 +212,23 @@ then I just had to serve static files and add templates and endpoints</p>
 <p>adding posts was easy</p>
 
 <p>db model</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s">"posts"</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="sh">"</span><span class="s">posts</span><span class="sh">"</span>
 
-    <span class="n">uuid</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">author</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
-    <span class="n">title</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">body</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
+    <span class="n">uuid</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">author</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">db</span><span class="p">.</span><span class="nc">String</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="nc">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s">"&lt;uuid </span><span class="si">%</span><span class="s">r&gt;"</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">author</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="n">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sh">"</span><span class="s">&lt;uuid %r&gt;</span><span class="sh">"</span> <span class="o">%</span> <span class="n">self</span><span class="p">.</span><span class="n">author</span>
 </code></pre></div></div>
 
 <p>backend code</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">engine</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">posts_table</span><span class="o">.</span><span class="n">insert</span><span class="p">(),</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">post_body</span><span class="p">)</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">engine</span><span class="p">.</span><span class="nf">execute</span><span class="p">(</span><span class="n">posts_table</span><span class="p">.</span><span class="nf">insert</span><span class="p">(),</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">post_body</span><span class="p">)</span>
 </code></pre></div></div>
 
-<p>then I just made a query to list all the user made posts and rendered the result in <code class="highlighter-rouge">/</code></p>
+<p>then I just made a query to list all the user made posts and rendered the result in <code class="language-plaintext highlighter-rouge">/</code></p>
 
 <p><del>add the ability to share posts</del> DONE</p>
 
@@ -237,24 +237,24 @@ and made the css file for the post dynamic</p>
 
 <p>the db side was pretty much the same as above with some minor tweaks</p>
 
-<p>but making the css dynamic errored a lot because <code class="highlighter-rouge">{}</code> gets parsed the jinja2 the template engine for 
+<p>but making the css dynamic errored a lot because <code class="language-plaintext highlighter-rouge">{}</code> gets parsed the jinja2 the template engine for 
 flask, so I had to figure out a way to make it work
 after reading stuff online, I ended up with this</p>
 
 <p>backend code</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_resource_as_string</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">charset</span><span class="o">=</span><span class="s">'utf-8'</span><span class="p">):</span>
-    <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">open_resource</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">charset</span><span class="p">)</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_resource_as_string</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">charset</span><span class="o">=</span><span class="sh">'</span><span class="s">utf-8</span><span class="sh">'</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">app</span><span class="p">.</span><span class="nf">open_resource</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">.</span><span class="nf">read</span><span class="p">().</span><span class="nf">decode</span><span class="p">(</span><span class="n">charset</span><span class="p">)</span>
 
-<span class="k">if</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="s">'username'</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
-            <span class="n">post_size</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="s">'username'</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">size</span>
-            <span class="n">post_color</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="s">'username'</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">color</span> 
+<span class="k">if</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">).</span><span class="nf">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="sh">'</span><span class="s">username</span><span class="sh">'</span><span class="p">]).</span><span class="nf">first</span><span class="p">():</span>
+            <span class="n">post_size</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">).</span><span class="nf">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="sh">'</span><span class="s">username</span><span class="sh">'</span><span class="p">]).</span><span class="nf">first</span><span class="p">().</span><span class="n">size</span>
+            <span class="n">post_color</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">).</span><span class="nf">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="sh">'</span><span class="s">username</span><span class="sh">'</span><span class="p">]).</span><span class="nf">first</span><span class="p">().</span><span class="n">color</span> 
 
-        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s">"clean-blog.css"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">post_color</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">post_size</span><span class="p">,</span><span class="n">w</span><span class="o">=</span><span class="n">get_resource_as_string</span><span class="p">(</span><span class="s">"static/css/clean-blog.css"</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nf">render_template</span><span class="p">(</span><span class="sh">"</span><span class="s">clean-blog.css</span><span class="sh">"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">post_color</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">post_size</span><span class="p">,</span><span class="n">w</span><span class="o">=</span><span class="nf">get_resource_as_string</span><span class="p">(</span><span class="sh">"</span><span class="s">static/css/clean-blog.css</span><span class="sh">"</span><span class="p">))</span>
 </code></pre></div></div>
 <p>template file</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{{w}}
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{{w}}
 
 * {{'{'}}
     font-size: {{size}};
@@ -275,19 +275,19 @@ after changing the css code a lot, I didn’t get any change in the thing
 so I examined the response and it turns out it was sending a wrong mimetype which led the browser
 into not executing it
 so I changed the code to this</p>
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">render_template</span><span class="p">(</span><span class="s">"clean-blog.css"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">post_color</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">post_size</span><span class="p">,</span><span class="n">w</span><span class="o">=</span><span class="n">get_resource_as_string</span><span class="p">(</span><span class="s">"static/css/clean-blog.css"</span><span class="p">)),</span> <span class="n">mimetype</span><span class="o">=</span><span class="s">"text/css"</span><span class="p">)</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">return</span> <span class="nc">Response</span><span class="p">(</span><span class="nf">render_template</span><span class="p">(</span><span class="sh">"</span><span class="s">clean-blog.css</span><span class="sh">"</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">post_color</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">post_size</span><span class="p">,</span><span class="n">w</span><span class="o">=</span><span class="nf">get_resource_as_string</span><span class="p">(</span><span class="sh">"</span><span class="s">static/css/clean-blog.css</span><span class="sh">"</span><span class="p">)),</span> <span class="n">mimetype</span><span class="o">=</span><span class="sh">"</span><span class="s">text/css</span><span class="sh">"</span><span class="p">)</span>
 </code></pre></div></div>
 <p>aaand it worked :)</p>
 
 <p><del>make the looks customizable</del> DONE</p>
 
-<p>now changing the regular <code class="highlighter-rouge">Content-type: application/url-encoded</code> form to use json wasn’t that simple
+<p>now changing the regular <code class="language-plaintext highlighter-rouge">Content-type: application/url-encoded</code> form to use json wasn’t that simple
 maybe there’s a better way but I used javascript to submit a json request since I had jquery already
 fetched with template I utilized it</p>
 
-<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nx">submitSettings</span><span class="p">(){</span>
-            <span class="kd">let</span> <span class="nx">data</span> <span class="o">=</span> <span class="s2">`{"color" : "</span><span class="p">${</span><span class="nx">$</span><span class="p">(</span><span class="dl">"</span><span class="s2">#choosenColor</span><span class="dl">"</span><span class="p">).</span><span class="nx">serializeArray</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span><span class="p">}</span><span class="s2">", "size": "</span><span class="p">${</span><span class="nx">$</span><span class="p">(</span><span class="dl">"</span><span class="s2">#choosenSize</span><span class="dl">"</span><span class="p">).</span><span class="nx">serializeArray</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span><span class="p">}</span><span class="s2">"}`</span>
-            <span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span>
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nf">submitSettings</span><span class="p">(){</span>
+            <span class="kd">let</span> <span class="nx">data</span> <span class="o">=</span> <span class="s2">`{"color" : "</span><span class="p">${</span><span class="nf">$</span><span class="p">(</span><span class="dl">"</span><span class="s2">#choosenColor</span><span class="dl">"</span><span class="p">).</span><span class="nf">serializeArray</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span><span class="p">}</span><span class="s2">", "size": "</span><span class="p">${</span><span class="nf">$</span><span class="p">(</span><span class="dl">"</span><span class="s2">#choosenSize</span><span class="dl">"</span><span class="p">).</span><span class="nf">serializeArray</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span><span class="p">}</span><span class="s2">"}`</span>
+            <span class="nx">$</span><span class="p">.</span><span class="nf">ajax</span><span class="p">({</span>
                 <span class="na">type</span><span class="p">:</span> <span class="dl">"</span><span class="s2">POST</span><span class="dl">"</span><span class="p">,</span>
                 <span class="na">url</span><span class="p">:</span> <span class="dl">"</span><span class="s2">/customize</span><span class="dl">"</span><span class="p">,</span>
                 <span class="na">data</span><span class="p">:</span> <span class="nx">data</span><span class="p">,</span>
@@ -295,7 +295,7 @@ fetched with template I utilized it</p>
                 <span class="na">dataType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">json</span><span class="dl">"</span><span class="p">,</span>
                 <span class="na">contentType</span> <span class="p">:</span> <span class="dl">"</span><span class="s2">application/json</span><span class="dl">"</span>
                 <span class="p">});</span>
-            <span class="nx">alert</span><span class="p">(</span><span class="dl">"</span><span class="s2">settings changed successfully</span><span class="dl">"</span><span class="p">);</span>
+            <span class="nf">alert</span><span class="p">(</span><span class="dl">"</span><span class="s2">settings changed successfully</span><span class="dl">"</span><span class="p">);</span>
           <span class="p">}</span>
 </code></pre></div></div>
 
@@ -307,26 +307,26 @@ fetched with template I utilized it</p>
 <p>adding xml support was easy but it turns out the normal xml library isn’t xxe-able by default
 after reading more about it, I realized lxml was xxe-able by default :)</p>
 
-<p><del>make the <code class="highlighter-rouge">/customize</code> endpoint accept json and xml</del></p>
+<p><del>make the <code class="language-plaintext highlighter-rouge">/customize</code> endpoint accept json and xml</del></p>
 
 <h3 id="day-3-ended-in-here">day 3 ended in here</h3>
 
 <p>at the other day I just plugged lxml code with the app and here we go</p>
 
-<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
-<span class="n">parser</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">XMLParser</span><span class="p">()</span>
-<span class="n">k</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
-<span class="n">post_color</span> <span class="o">=</span> <span class="s">""</span>
-<span class="n">post_size</span> <span class="o">=</span> <span class="s">""</span>
-<span class="n">w</span> <span class="o">=</span> <span class="s">""</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">k</span><span class="o">.</span><span class="n">getchildren</span><span class="p">():</span>
-    <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">"color"</span><span class="p">:</span>
-        <span class="n">post_color</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">text</span>
-    <span class="k">elif</span> <span class="n">i</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">"size"</span><span class="p">:</span>
-        <span class="n">post_size</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">text</span>
-    <span class="k">if</span> <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="s">'username'</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
-            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="s">'username'</span><span class="p">])</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s">"size"</span><span class="p">:</span> <span class="n">post_size</span><span class="p">,</span> <span class="s">"color"</span><span class="p">:</span> <span class="n">post_color</span><span class="p">})</span>
-            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<div class="language-py highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
+<span class="n">parser</span> <span class="o">=</span> <span class="n">etree</span><span class="p">.</span><span class="nc">XMLParser</span><span class="p">()</span>
+<span class="n">k</span> <span class="o">=</span> <span class="n">etree</span><span class="p">.</span><span class="nf">fromstring</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+<span class="n">post_color</span> <span class="o">=</span> <span class="sh">""</span>
+<span class="n">post_size</span> <span class="o">=</span> <span class="sh">""</span>
+<span class="n">w</span> <span class="o">=</span> <span class="sh">""</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">k</span><span class="p">.</span><span class="nf">getchildren</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">.</span><span class="n">tag</span> <span class="o">==</span> <span class="sh">"</span><span class="s">color</span><span class="sh">"</span><span class="p">:</span>
+        <span class="n">post_color</span> <span class="o">=</span> <span class="n">i</span><span class="p">.</span><span class="n">text</span>
+    <span class="k">elif</span> <span class="n">i</span><span class="p">.</span><span class="n">tag</span> <span class="o">==</span> <span class="sh">"</span><span class="s">size</span><span class="sh">"</span><span class="p">:</span>
+        <span class="n">post_size</span> <span class="o">=</span> <span class="n">i</span><span class="p">.</span><span class="n">text</span>
+    <span class="k">if</span> <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">).</span><span class="nf">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="sh">'</span><span class="s">username</span><span class="sh">'</span><span class="p">]).</span><span class="nf">first</span><span class="p">():</span>
+            <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">settings_map</span><span class="p">).</span><span class="nf">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">session</span><span class="p">[</span><span class="sh">'</span><span class="s">username</span><span class="sh">'</span><span class="p">]).</span><span class="nf">update</span><span class="p">({</span><span class="sh">"</span><span class="s">size</span><span class="sh">"</span><span class="p">:</span> <span class="n">post_size</span><span class="p">,</span> <span class="sh">"</span><span class="s">color</span><span class="sh">"</span><span class="p">:</span> <span class="n">post_color</span><span class="p">})</span>
+            <span class="n">db</span><span class="p">.</span><span class="n">session</span><span class="p">.</span><span class="nf">commit</span><span class="p">()</span>
 
 </code></pre></div></div>
 
@@ -339,7 +339,7 @@ nope it’s not :P</p>
 now I had another task I didn’t think of</p>
 
 <p>I tried to do some stuff with docker but most of them fucked up so I decided to get help from a friend who can actually
-use docker decently and plus he was working with the infra team on the CTF so I sent a message to <code class="highlighter-rouge">MEhrn00</code> and he sent
+use docker decently and plus he was working with the infra team on the CTF so I sent a message to <code class="language-plaintext highlighter-rouge">MEhrn00</code> and he sent
 me a basic alpine linux DockerFile</p>
 
 <div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> alpine:3.7</span>
@@ -365,7 +365,7 @@ me a basic alpine linux DockerFile</p>
 <p>and it didn’t work, because lxml installation was erroring for no reason</p>
 
 <p><em>weird error I don’t understand</em></p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code> gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
     In file included from src/lxml/etree.c:692:0:
     src/lxml/includes/etree_defs.h:14:31: fatal error: libxml/xmlversion.h: No such file or directory
      #include "libxml/xmlversion.h"
@@ -408,11 +408,11 @@ and I ended up with this</p>
 <span class="k">EXPOSE</span><span class="s"> 7100</span>
 </code></pre></div></div>
 <p>the app worked but …
-every time I tried to insert into the db I got <code class="highlighter-rouge">db only readable</code>
+every time I tried to insert into the db I got <code class="language-plaintext highlighter-rouge">db only readable</code>
 it was because I started the container as root but ran the code as uwsgi
 I had the option to start the container as the uwsgi users but I didn’t like this way
-and <code class="highlighter-rouge">chmod 777 file.db</code> didn’t work too
-I found a way about putting the db file into a directory and <code class="highlighter-rouge">chown</code>-ing the dir to make it work</p>
+and <code class="language-plaintext highlighter-rouge">chmod 777 file.db</code> didn’t work too
+I found a way about putting the db file into a directory and <code class="language-plaintext highlighter-rouge">chown</code>-ing the dir to make it work</p>
 
 <div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> alpine:3.7</span>
 
@@ -455,9 +455,9 @@ it’s done</p>
 
 <p><strong>isn’t this challenge considered pure guessing and nothing was learned in here ?</strong></p>
 
-<p>the <code class="highlighter-rouge">content-type</code> thing is popular and it happened in a couple of real life applications,
+<p>the <code class="language-plaintext highlighter-rouge">content-type</code> thing is popular and it happened in a couple of real life applications,
 because you never know what the devs think of the app may have used xml before or it was in there for just in case
-<code class="highlighter-rouge">¯\_(ツ)_/¯</code>
+<code class="language-plaintext highlighter-rouge">¯\_(ツ)_/¯</code>
 also it was used in multiple CTFs before which got me amazed how really few people solved it like:</p>
 
 <ul>

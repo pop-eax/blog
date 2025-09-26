@@ -108,22 +108,22 @@ and found the following endpoints
 
 <p>from here I started to look at the endpoints</p>
 
-<p><code class="highlighter-rouge">/login</code>
+<p><code class="language-plaintext highlighter-rouge">/login</code>
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/login-1.png" alt="login-1" /></p>
 
-<p><code class="highlighter-rouge">/register</code>
+<p><code class="language-plaintext highlighter-rouge">/register</code>
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/register-1.png" alt="register" /></p>
 
-<p><code class="highlighter-rouge">/profile</code>
+<p><code class="language-plaintext highlighter-rouge">/profile</code>
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png" alt="profile" /></p>
 
-<p><code class="highlighter-rouge">/debug</code>
+<p><code class="language-plaintext highlighter-rouge">/debug</code>
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png" alt="debug" /></p>
 
-<p><code class="highlighter-rouge">/profile and /debug</code> caught my eye, so I started crafting a jwt token to see the contents 
+<p><code class="language-plaintext highlighter-rouge">/profile and /debug</code> caught my eye, so I started crafting a jwt token to see the contents 
 and after a lot of trial and error and pain it worked</p>
 
-<p><code class="highlighter-rouge">eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc</code></p>
+<p><code class="language-plaintext highlighter-rouge">eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc</code></p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/chromeDev-1.png" alt="profile-2" />
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-2.png" alt="profile-2" />
@@ -136,12 +136,12 @@ and after a lot of trial and error and pain it worked</p>
 and we kept on trying and trying for hours and nothing helped</p>
 
 <p>so we just started from the beginning and backtracked our tracks :)
-I was just taking a look again at /profile and I was like <code class="highlighter-rouge">hmmmmm is that a f***ing VHOST</code></p>
+I was just taking a look again at /profile and I was like <code class="language-plaintext highlighter-rouge">hmmmmm is that a f***ing VHOST</code></p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-2.png" alt="vhost" /></p>
 
-<p>I added all the weird domains to my <code class="highlighter-rouge">/etc/hosts</code> and started playing around 
-and it didn’t work like WTF, so I tried with the vhost from <code class="highlighter-rouge">/debug</code> and it worked :P</p>
+<p>I added all the weird domains to my <code class="language-plaintext highlighter-rouge">/etc/hosts</code> and started playing around 
+and it didn’t work like WTF, so I tried with the vhost from <code class="language-plaintext highlighter-rouge">/debug</code> and it worked :P</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-3.png" alt="vhost" />
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/api-1.png" alt="api" />
@@ -150,13 +150,13 @@ and I got some other endpoints</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiFuzz-1.png" alt="disearch-api" /></p>
 
-<p>now only <code class="highlighter-rouge">/reports</code> caught my eye but it’s forbiden <strong>hmmmmmmmmmm</strong>:</p>
+<p>now only <code class="language-plaintext highlighter-rouge">/reports</code> caught my eye but it’s forbiden <strong>hmmmmmmmmmm</strong>:</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-1.png" alt="api-reports" /></p>
 
-<p>I also guessed <code class="highlighter-rouge">/reporters</code> because you know it makes sense, it’s also forbiden :(</p>
+<p>I also guessed <code class="language-plaintext highlighter-rouge">/reporters</code> because you know it makes sense, it’s also forbiden :(</p>
 
-<p>after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the <code class="highlighter-rouge">api-key</code> header</p>
+<p>after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the <code class="language-plaintext highlighter-rouge">api-key</code> header</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-2.png" alt="reports" />
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/reporters.png" alt="reporters" /></p>
@@ -179,14 +179,14 @@ I just started screaming because it was the only thing I wanted for hours</p>
 http://api.rbtrust.internal/debug?url_48902=file:///etc/passwd</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/etcpasswd-1.png" alt="etc/passwd" />
-we can see <code class="highlighter-rouge">/home/jobert</code> so the flag should be <code class="highlighter-rouge">/home/jobert/flag.txt</code></p>
+we can see <code class="language-plaintext highlighter-rouge">/home/jobert</code> so the flag should be <code class="language-plaintext highlighter-rouge">/home/jobert/flag.txt</code></p>
 
 <p><strong>YES YES, STILL ARE WE F***CKING DONE YET</strong>
 <strong>NO, there’s still alot of pain and sacrifice</strong></p>
 
 <p>at this point there was still 30 minutes for the CTF and I need the flag</p>
 
-<p>so the hints have something to do with <code class="highlighter-rouge">$CLOUD_SERVER</code> or whatever
+<p>so the hints have something to do with <code class="language-plaintext highlighter-rouge">$CLOUD_SERVER</code> or whatever
 from the /debug we can clearly see it’s an aws, so we started playing around with aws stuff
 the only useful thing we found was this http://api.rbtrust.internal/debug?url_48902=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance</p>
 
@@ -198,9 +198,9 @@ the only useful thing we found was this http://api.rbtrust.internal/debug?url_48
 <p>there was no flag or anything important so we got a good idea about s3 buckets
 anddddd the keys for the s3 was wrong :(</p>
 
-<p>15 mins left and still nothing WTF, my teammate was like <code class="highlighter-rouge">I need the f***ing flag</code></p>
+<p>15 mins left and still nothing WTF, my teammate was like <code class="language-plaintext highlighter-rouge">I need the f***ing flag</code></p>
 
-<p>so after reading some writeups and stuff we discovered that the aws keys are in <code class="highlighter-rouge">/home/jobert/.aws/credentials</code>
+<p>so after reading some writeups and stuff we discovered that the aws keys are in <code class="language-plaintext highlighter-rouge">/home/jobert/.aws/credentials</code>
 and it worked :P</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/jobert.png" alt="creds" /></p>
@@ -221,7 +221,7 @@ so we had to guess, we had 6 mins left for the CTF my hands were shaking and I d
 <p>I didn’t know what to do, so I had to break it whatever it costs
 after some trial and error I got it</p>
 
-<p><code class="highlighter-rouge">aws s3 cp s3://rbtrust-internal/flag.txt ./1 </code>
+<p><code class="language-plaintext highlighter-rouge">aws s3 cp s3://rbtrust-internal/flag.txt ./1 </code>
 and done it took us 10 hours to finish it</p>
 
 <p><img src="https://pbs.twimg.com/media/Dpoi1z-VsAEQkYA?format=jpg&amp;name=small" alt="meme" />
@@ -229,7 +229,7 @@ submitted 2 mins before the ctf ends :D</p>
 
 <p><img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/Final-flag.png" alt="flag" /></p>
 
-<p><code class="highlighter-rouge">flag{get_em_uPy4TWP1SQlcaukrU8GPe}</code></p>
+<p><code class="language-plaintext highlighter-rouge">flag{get_em_uPy4TWP1SQlcaukrU8GPe}</code></p>
 
 <p>only 2 solves :)
 <img src="https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/ww.png" alt="2 solves" /></p>

